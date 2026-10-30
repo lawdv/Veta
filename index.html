@@ -70,9 +70,11 @@
           );
         }
         // Menú de rescate integrado con el HUD: se reconstruye manteniendo los IDs funcionales.
-        gameHtml = gameHtml.replace(
-          /<div id="deathOverlay"[\\s\\S]*?<\\/div>\\s*<script>/,
-          `<div id="deathOverlay" class="death-screen" style="display:none">
+        {
+          const overlayStart=gameHtml.indexOf('<div id="deathOverlay"');
+          const scriptStart=overlayStart<0?-1:gameHtml.indexOf('<script>',overlayStart);
+          if(overlayStart<0||scriptStart<0)throw new Error("No se encontró la pantalla de rescate original.");
+          gameHtml=gameHtml.slice(0,overlayStart)+`<div id="deathOverlay" class="death-screen" style="display:none">
  <section class="death-panel">
   <div class="death-kicker"><i></i> VETA / SERVICIO DE SALVAMENTO</div>
   <div class="death-title">NAVE PERDIDA</div>
@@ -83,8 +85,8 @@
   <div class="death-foot"><span>UNIDAD DE RESCATE VETA</span><span>CASCO IRRECUPERABLE</span></div>
  </section>
 </div>
-<script>`
-        );
+`+gameHtml.slice(scriptStart);
+        }
         const rescueCss = `
 .death-screen{position:fixed!important;inset:0!important;z-index:999!important;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,8,18,.93);backdrop-filter:blur(7px)}
 .death-panel{width:min(470px,94vw);padding:25px 24px 17px;background:linear-gradient(155deg,#101b2d,#0a1220 72%);border:1px solid #426080;border-radius:7px;box-shadow:0 22px 70px #000b;color:var(--ink);text-align:left}
