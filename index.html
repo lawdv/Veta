@@ -111,12 +111,12 @@
 
         // Controles de pausa y reinicio aislado para pruebas.
         gameHtml = replaceOnce(gameHtml, '<div id="shop"></div>', `<div id="shop"></div>
-<div id="gameControls" style="position:fixed;right:14px;top:14px;display:flex;gap:7px;z-index:20;pointer-events:auto">
+<div id="gameControls" style="position:fixed!important;right:14px!important;top:14px!important;display:flex!important;gap:7px;z-index:10000!important;pointer-events:auto!important;visibility:visible!important;opacity:1!important">
   <span id="testLabel" style="display:none;align-self:center;color:#fde68a;font-size:11px;font-weight:800">MODO PRUEBAS</span>
   <button id="pauseBtn" class="gh" type="button">Ⅱ Pausar</button>
   <button id="restartBtn" type="button" style="border-color:#f87171;color:#fca5a5">↻ Reiniciar pruebas</button>
 </div>
-<div id="pauseOverlay" style="display:none;position:fixed;inset:0;z-index:30;background:rgba(3,8,18,.78);align-items:center;justify-content:center;text-align:center;padding:24px">
+<div id="pauseOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(3,8,18,.78);align-items:center;justify-content:center;text-align:center;padding:24px">
   <div style="background:#0e1626;border:1px solid #334155;border-radius:16px;padding:26px;max-width:360px;width:100%">
     <div style="font-size:28px;font-weight:800;margin-bottom:8px">JUEGO EN PAUSA</div>
     <div style="color:#94a3b8;margin-bottom:18px">La simulación está detenida.</div>
