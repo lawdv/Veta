@@ -17,31 +17,84 @@
   <div id="status"><strong>Veta · minería espacial</strong>Preparando el campo de exploración…<br><small>Descargando recursos del juego.</small></div>
   <script>
     (async () => {
-      const files = [
-        "game.part00.txt","game.part01.txt","game.part02.txt",
-        "game.part03.txt","game.part04.txt","game.part05.txt"
-      ];
+      const files = ["game.part00.txt","game.part01.txt","game.part02.txt","game.part03.txt","game.part04.txt","game.part05.txt"];
+      const replaceOnce = (source, from, to, label) => {
+        const at = source.indexOf(from);
+        if (at < 0) throw new Error("No se pudo aplicar la mejora: " + label);
+        return source.slice(0, at) + to + source.slice(at + from.length);
+      };
       try {
         const pieces = await Promise.all(files.map(async file => {
           const response = await fetch("./assets/" + file, {cache:"no-store"});
           if (!response.ok) throw new Error("No se pudo cargar " + file + " (" + response.status + ")");
           return response.text();
         }));
-        const base64 = pieces.join("").replace(/\s/g, "");
-        const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-        if (!("DecompressionStream" in window)) {
-          throw new Error("Este navegador no admite la descompresión requerida. Prueba con una versión reciente de Chrome, Edge, Firefox o Safari.");
-        }
+        const binary = Uint8Array.from(atob(pieces.join("").replace(/\s/g, "")), c => c.charCodeAt(0));
+        if (!("DecompressionStream" in window)) throw new Error("Actualiza tu navegador para iniciar Veta.");
         const stream = new Blob([binary]).stream().pipeThrough(new DecompressionStream("gzip"));
-        const gameHtml = await new Response(stream).text();
-        document.open();
-        document.write(gameHtml);
-        document.close();
+        let gameHtml = await new Response(stream).text();
+
+        // Controles de pausa y reinicio aislado para pruebas.
+        gameHtml = replaceOnce(gameHtml, '<div id="shop"></div>', `<div id="shop"></div>
+<div id="gameControls" style="position:fixed;right:14px;top:14px;display:flex;gap:7px;z-index:20;pointer-events:auto">
+  <span id="testLabel" style="display:none;align-self:center;color:#fde68a;font-size:11px;font-weight:800">MODO PRUEBAS</span>
+  <button id="pauseBtn" class="gh" type="button">Ⅱ Pausar</button>
+  <button id="restartBtn" type="button" style="border-color:#f87171;color:#fca5a5">↻ Reiniciar pruebas</button>
+</div>
+<div id="pauseOverlay" style="display:none;position:fixed;inset:0;z-index:30;background:rgba(3,8,18,.78);align-items:center;justify-content:center;text-align:center;padding:24px">
+  <div style="background:#0e1626;border:1px solid #334155;border-radius:16px;padding:26px;max-width:360px;width:100%">
+    <div style="font-size:28px;font-weight:800;margin-bottom:8px">JUEGO EN PAUSA</div>
+    <div style="color:#94a3b8;margin-bottom:18px">La simulación está detenida.</div>
+    <button id="resumeBtn" type="button">▶ Continuar</button>
+    <button id="pauseRestartBtn" type="button" class="gh" style="margin-left:6px">Reiniciar pruebas</button>
+  </div>
+</div>`, "controles");
+        gameHtml = replaceOnce(gameHtml, "let S=fresh();\ntry{const t=JSON.parse(localStorage.getItem(SAVE));if(t&&t.lv)S=t}catch(e){}", "const TEST_MODE=new URLSearchParams(location.search).has('test');\nlet S=fresh();\nif(!TEST_MODE)try{const t=JSON.parse(localStorage.getItem(SAVE));if(t&&t.lv)S=t}catch(e){}", "modo pruebas");
+        gameHtml = replaceOnce(gameHtml, "const save=()=>{try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};", "const save=()=>{if(TEST_MODE)return;try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};", "guardado de pruebas");
+        gameHtml = replaceOnce(gameHtml, "const keys={},mouse={x:W/2,y:H/2-100,down:0};", `const keys={},mouse={x:W/2,y:H/2-100,down:0};
+let paused=false;
+const setPaused=value=>{paused=!!value;$('pauseOverlay').style.display=paused?'flex':'none';$('pauseBtn').textContent=paused?'▶ Continuar':'Ⅱ Pausar';if(paused){mouse.down=0;mouse.rdown=0;for(const k in keys)keys[k]=0}};
+const restartTest=()=>{if(confirm('Reiniciar la partida de pruebas desde cero?')){localStorage.removeItem(SAVE);location.href=location.pathname+'?test=1&restart='+Date.now()}};
+$('pauseBtn').onclick=()=>setPaused(!paused);$('resumeBtn').onclick=()=>setPaused(false);$('restartBtn').onclick=restartTest;$('pauseRestartBtn').onclick=restartTest;
+if(TEST_MODE)$('testLabel').style.display='inline';`, "estado de pausa");
+        gameHtml = replaceOnce(gameHtml, "    if(docked||d.fl||d.rejoin>0||hd0>=1050)d.act=0;\n    else if(groupDist<rin||d.prov>0){d.act=1;d.hold=Math.max(d.hold||0,8)}\n    else if((d.hold||0)>0&&groupDist<rin+300){d.act=1;d.hold-=dt}\n    else d.act=0;", `    // Histéresis: una escuadra no cambia de ataque a patrulla justo en el borde.
+    if(docked||d.fl||d.rejoin>0||hd0>=1050){d.act=0;d.hold=0}
+    else if(!d.act&&(groupDist<rin||d.prov>0)){d.act=1;d.hold=10}
+    else if(d.act&&groupDist>rin+720&&d.prov<=0){d.act=0;d.hold=0}
+    else if(d.act){d.hold=10}
+    else if(d.prov>0){d.act=1;d.hold=10}
+    else d.act=0;`, "detección estable");
+        gameHtml = replaceOnce(gameHtml, "        const error=dist-R.rg;\n        const vr=d.vx*ux+d.vy*uy;\n        const radial=Math.max(-sp*.7,Math.min(sp*.9,error*1.6-vr*.75));\n        const orbitScale=error>0?Math.max(.12,1-error/Math.max(R.rg*.9,140)):Math.max(.1,1+error/Math.max(R.rg*.8,120));", `        const error=dist-R.rg;
+        const vr=d.vx*ux+d.vy*uy;
+        // Aproximación amortiguada para evitar el vaivén alrededor del radio de ataque.
+        const radial=Math.max(-sp*.62,Math.min(sp*.82,error*1.15-vr*1.25));
+        const orbitScale=Math.max(.22,Math.min(1,Math.abs(error)/Math.max(R.rg*.85,150)+.22));`, "movimiento enemigo");
+        gameHtml = replaceOnce(gameHtml, "  if(S.ct&&S.ct.t==='kill'){const d=near(drones);return d?{x:d.x,y:d.y,c:'#f87171'}:null}\n  if(S.ct){const a=near(ast,a=>a.k===S.ct.k);return a?{x:a.x,y:a.y,c:RES[S.ct.k].c}:base}", `  if(S.ct&&S.ct.t==='kill'){const squad=drones.filter(d=>!d.dead&&Math.hypot(d.hx-(S.ct.zoneX||BX),d.hy-(S.ct.zoneY||BY))<80);const d=near(squad.length?squad:drones);return d?{x:d.x,y:d.y,c:'#f87171'}:null}
+  if(S.ct){const a=near(ast,a=>a.k===S.ct.k&&(!a.missionDeposit||Math.hypot(a.x-S.ct.zoneX,a.y-S.ct.zoneY)<900));return a?{x:a.x,y:a.y,c:RES[S.ct.k].c}:S.ct.zoneX!=null?{x:S.ct.zoneX,y:S.ct.zoneY,c:RES[S.ct.k].c}:base}`, "guía de misión");
+        gameHtml = replaceOnce(gameHtml, "function newCt(){const k=Math.random()<.5,r=['cu','ice','cry'][Math.random()*3|0];\n  S.ct=k?{t:'kill',n:3+(Math.random()*3|0),h:0}:{t:'haul',k:r,n:6,h:0};\n  S.ct.r=k?S.ct.n*90:Math.round(6*RES[r].v*1.8)}", `function newCt(){
+  // Cada contrato asigna un depósito de recursos concreto, protegido por una escuadra.
+  ast=ast.filter(a=>!a.missionDeposit);
+  const guard=squadCenters[(Math.random()*squadCenters.length)|0]||{x:BX+2600,y:BY};
+  const kill=Math.random()<.28,r=['cu','ice','cry'][Math.random()*3|0];
+  S.ct=kill?{t:'kill',n:3+(Math.random()*3|0),h:0,zoneX:guard.x,zoneY:guard.y}
+            :{t:'haul',k:r,n:6,h:0,zoneX:guard.x,zoneY:guard.y};
+  S.ct.r=kill?S.ct.n*90:Math.round(6*RES[r].v*1.8);
+  if(!kill)for(let i=0;i<12;i++){
+    const ang=i*2.399963+Math.random()*.22,rad=230+Math.random()*430;
+    const x=Math.max(220,Math.min(WS-220,guard.x+Math.cos(ang)*rad));
+    const y=Math.max(220,Math.min(WS-220,guard.y+Math.sin(ang)*rad));
+    if(ast.every(a=>Math.hypot(x-a.x,y-a.y)>ASTEROID_MIN_GAP*.72)){
+      const rock=spawnA(x,y,r);rock.missionDeposit=true;ast.push(rock);
+    }
+  }
+}`, "depósitos de misión");
+        gameHtml = replaceOnce(gameHtml, "function update(dt){\n  time+=dt;", "function update(dt){\n  if(paused){hud(st());return}\n  time+=dt;", "pausa de simulación");
+        gameHtml = replaceOnce(gameHtml, "addEventListener('keydown',e=>{if(e.code==='KeyI'||(e.code==='Escape'&&invOpen)){toggleInv();return}startAmb();if(e.code==='Digit1')useAct(0);if(e.code==='Digit2'||e.code==='Digit3')say('Aún no disponible',1200);keys[e.code]=1;if(/^(Space|Arrow)/.test(e.code))e.preventDefault()});", "addEventListener('keydown',e=>{if(e.code==='KeyI'||(e.code==='Escape'&&invOpen)){toggleInv();return}if(e.code==='KeyP'||(e.code==='Escape'&&!invOpen&&!docked)){setPaused(!paused);return}if(paused)return;startAmb();if(e.code==='Digit1')useAct(0);if(e.code==='Digit2'||e.code==='Digit3')say('Aún no disponible',1200);keys[e.code]=1;if(/^(Space|Arrow)/.test(e.code))e.preventDefault()});", "atajo de pausa");
+        gameHtml = replaceOnce(gameHtml, "cv.addEventListener('mousedown',e=>{startAmb();if(e.button===2)mouse.rdown=1;else mouse.down=1});", "cv.addEventListener('mousedown',e=>{if(paused)return;startAmb();if(e.button===2)mouse.rdown=1;else mouse.down=1});", "bloqueo de controles");
+        document.open(); document.write(gameHtml); document.close();
       } catch (error) {
         console.error(error);
-        document.getElementById("status").innerHTML =
-          "<strong>No se pudo iniciar Veta</strong>" +
-          "<small>" + String(error.message || error) + "</small>";
+        document.getElementById("status").innerHTML = "<strong>No se pudo iniciar Veta</strong><small>" + String(error.message || error) + "</small>";
       }
     })();
   </script>
