@@ -1,97 +1,35 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#07111b">
-  <title>Veta · minería espacial</title>
-  <style>
-    html,body{margin:0;min-height:100%;background:#07111b;color:#dce8f3;font:16px system-ui,sans-serif}
-    body{display:grid;place-items:center;padding:24px;box-sizing:border-box}
-    #status{max-width:560px;text-align:center;line-height:1.6}
-    #status strong{display:block;font-size:1.2rem;margin-bottom:8px}
-    #status small{color:#91a8bb}
-  </style>
-</head>
-<body>
-  <div id="status"><strong>Veta · minería espacial</strong>Preparando el campo de exploración…<br><small>Descargando recursos del juego.</small></div>
-  <script>
-    (async () => {
-      const files = ["game.part00.txt","game.part01.txt","game.part02.txt","game.part03.txt","game.part04.txt","game.part05.txt"];
-      const replaceOnce = (source, from, to, label) => {
-        const at = source.indexOf(from);
-        if (at < 0) throw new Error("No se pudo aplicar la mejora: " + label);
-        return source.slice(0, at) + to + source.slice(at + from.length);
-      };
-      try {
-        const pieces = await Promise.all(files.map(async file => {
-          const response = await fetch("./assets/" + file, {cache:"no-store"});
-          if (!response.ok) throw new Error("No se pudo cargar " + file + " (" + response.status + ")");
-          return response.text();
-        }));
-        const binary = Uint8Array.from(atob(pieces.join("").replace(/\s/g, "")), c => c.charCodeAt(0));
-        if (!("DecompressionStream" in window)) throw new Error("Actualiza tu navegador para iniciar Veta.");
-        const stream = new Blob([binary]).stream().pipeThrough(new DecompressionStream("gzip"));
-        let gameHtml = await new Response(stream).text();
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Veta · minería espacial</title>
+<style>
+:root{--bg:#070b14;--ink:#dbe7ff;--mute:#7b8bab;--acc:#7dd3fc;--line:#24324d;--card:#0e1626}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+#hud{position:fixed;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 8px;display:flex;gap:18px;flex-wrap:wrap;pointer-events:none}
+.st{min-width:110px}.st small{display:block;color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:3px}.bar i{display:block;height:100%;width:100%}
+#msg{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);color:var(--mute);text-align:center;pointer-events:none;max-width:90%}
+#shop{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,94vw);max-height:90vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+#shop h2{margin:0 0 4px;font-size:18px}#shop h3{margin:14px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)}
+button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--acc);background:transparent;color:var(--acc);cursor:pointer;white-space:nowrap}
+button:hover:not(:disabled){background:var(--acc);color:#06101c}button:disabled{opacity:.35;cursor:default}
+button.gh{border-color:var(--line);color:var(--mute)}
+.grids{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap}.gz{flex:1;min-width:200px;border:1px dashed var(--line);border-radius:8px;padding:6px}.gz small{display:block;color:var(--mute);margin-bottom:4px}
+.g{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}.cell{aspect-ratio:1;border-radius:3px;cursor:grab}.cell.e{background:var(--line);opacity:.35;cursor:default}
+.sell{margin-top:8px;border-color:#fcd34d;color:var(--ink);line-height:1.6}
+.act.on{border-color:var(--acc);box-shadow:0 0 12px var(--acc)}.act.lock{opacity:.35}
+#acts{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:8px;pointer-events:none}
+.act{position:relative;width:60px;height:60px;border:1px solid var(--line);border-radius:10px;background:rgba(14,22,38,.85);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.act b{position:absolute;top:3px;left:6px;font-size:11px;color:var(--mute)}.act span{font-size:11px}.act i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);height:0}
+.tabs{display:flex;gap:6px;margin:10px 0 4px;flex-wrap:wrap}.tabs button.on{background:var(--acc);color:#06101c}.tp{display:none}.tp.on{display:block}
+#inv{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,94vw);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 
-                // VETA_V6_RESPAWN_AND_RESCUE_PATCH
-        // El ciclo de respawn se reemplaza por una única ruta garantizada.
-        {
-          const fn = gameHtml.indexOf("function updDrones(dt){");
-          const dead = fn < 0 ? -1 : gameHtml.indexOf("    if(d.dead){", fn);
-          const role = dead < 0 ? -1 : gameHtml.indexOf("    const R=DR[d.ty]", dead);
-          if (fn < 0 || dead < 0 || role < 0) throw new Error("No se encontró el ciclo de vida de los drones para aplicar V6.");
-          const respawn = `    if(d.dead){
-      d.rt=(Number.isFinite(d.rt)?d.rt:12)-dt;
-      if(d.rt<=0){
-        const homeX=Number.isFinite(d.hx)?d.hx:d.x, homeY=Number.isFinite(d.hy)?d.hy:d.y;
-        let spot={x:homeX,y:homeY},best=-1;
-        const phase=Math.random()*Math.PI*2;
-        for(let j=0;j<24;j++){
-          const a=phase+j*Math.PI*2/24,rad=260+(j%4)*105;
-          const x=Math.max(120,Math.min(WS-120,homeX+Math.cos(a)*rad));
-          const y=Math.max(120,Math.min(WS-120,homeY+Math.sin(a)*rad));
-          const score=Math.hypot(p.x-x,p.y-y)+(Math.hypot(x-BX,y-BY)<500?350:0);
-          if(score>best){best=score;spot={x,y}}
-        }
-        d.dead=0;d.x=spot.x;d.y=spot.y;d.hx=homeX;d.hy=homeY;
-        d.vx=0;d.vy=0;d.fl=0;d.ch=0;d.burst=0;d.hold=0;d.rejoin=0;
-        d.chargeT=0;d.al=0;d.camp=0;d.act=0;d.prov=0;d.init=1;
-        setDrone(d,d.spawnTy||d.ty||pickTy(t));d.spawnTy=d.ty;
-        d.cd=1.2+Math.random()*1.4;d.ft=1+Math.random()*2;
-      }
-      continue;
-    }
-`;
-          gameHtml = gameHtml.slice(0, dead) + respawn + gameHtml.slice(role);
-          gameHtml = gameHtml.replace(
-            "if(!d.init){d.init=1;d.bhp=d.bhp||d.max;d.vx=d.vy=0;d.ft=2+Math.random()*3;d.hold=0;d.rejoin=0;d.chargeT=0;setDrone(d,d.ty==='a'?'a':pickTy(0))}",
-            "if(!d.init){d.init=1;d.bhp=d.bhp||d.max;d.vx=d.vy=0;d.ft=2+Math.random()*3;d.hold=0;d.rejoin=0;d.chargeT=0;d.spawnTy=d.ty==='a'?'a':(d.ty||pickTy(0));setDrone(d,d.spawnTy)}"
-          );
-        }
-        // Menú de rescate integrado con el HUD: se reconstruye manteniendo los IDs funcionales.
-        {
-          const scriptStart=gameHtml.indexOf('<script>');
-          if(scriptStart<0)throw new Error("No se encontró el punto de montaje de la pantalla de rescate.");
-          const rescueMarkup=`<div id="deathOverlay" class="death-screen" style="display:none">
- <section class="death-panel">
-  <div class="death-kicker"><i></i> VETA / SERVICIO DE SALVAMENTO</div>
-  <div class="death-title">NAVE PERDIDA</div>
-  <p class="death-copy">Baliza de emergencia activa. La estación ofrece dos protocolos para recuperar la expedición.</p>
-  <div class="death-rule"><span>PROTOCOLO DE RECUPERACIÓN</span><p>La carga no asegurada se pierde durante el rescate. Los sistemas volverán con capacidad limitada.</p></div>
-  <button id="deathRestore" class="death-choice tow" type="button"><span class="choice-mark">01</span><span class="choice-main"><b>Remolque a estación</b><small>Conservar el 50% de la carga · recuperar en la base</small></span><span class="choice-arrow">›</span></button>
-  <button id="deathRestoreHere" class="death-choice field" type="button"><span class="choice-mark">02</span><span class="choice-main"><b>Reconstrucción local</b><small>Perder toda la carga · volver al lugar del siniestro</small></span><span class="choice-arrow">›</span></button>
-  <div class="death-foot"><span>UNIDAD DE RESCATE VETA</span><span>CASCO IRRECUPERABLE</span></div>
- </section>
-</div>
-`;
-          const existing=gameHtml.indexOf('<div id="deathOverlay"');
-          if(existing>=0){const close=gameHtml.indexOf('</div>',existing);gameHtml=gameHtml.slice(0,existing)+rescueMarkup+gameHtml.slice(close+6)}
-          else gameHtml=gameHtml.slice(0,scriptStart)+rescueMarkup+gameHtml.slice(scriptStart);
-        }
-        const rescueCss = `
-.death-screen{position:fixed!important;inset:0!important;z-index:999!important;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,8,18,.93);backdrop-filter:blur(7px)}
-.death-panel{width:min(470px,94vw);padding:25px 24px 17px;background:linear-gradient(155deg,#101b2d,#0a1220 72%);border:1px solid #426080;border-radius:7px;box-shadow:0 22px 70px #000b;color:var(--ink);text-align:left}
+/* Pantalla de pérdida: misma interfaz técnica y paleta del HUD */
+.death-screen{position:fixed!important;inset:0!important;z-index:999!important;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,8,18,.92);backdrop-filter:blur(7px)}
+.death-panel{width:min(470px,94vw);padding:25px 24px 17px;background:linear-gradient(155deg,#101b2d,#0a1220 72%);border:1px solid #426080;border-radius:7px;box-shadow:0 22px 70px #000b;color:var(--ink);text-align:left;position:relative;font-family:inherit}
 .death-kicker{font-size:10px;letter-spacing:.16em;color:#7dd3fc;font-weight:800;display:flex;align-items:center;gap:9px}
 .death-kicker i{width:7px;height:7px;border-radius:50%;background:#f87171;box-shadow:0 0 10px #f87171;display:inline-block}
 .death-title{font-size:clamp(25px,6vw,34px);font-weight:900;letter-spacing:.07em;margin:10px 0 7px;color:#e5edf9}
@@ -99,7 +37,7 @@
 .death-rule{border-left:2px solid #7dd3fc;background:#111e31;padding:10px 13px;margin:0 0 14px}
 .death-rule span{font-size:9px;letter-spacing:.14em;color:#7dd3fc;font-weight:800}
 .death-rule p{font-size:12px;line-height:1.5;color:#c2cde0;margin:4px 0 0}
-.death-choice{width:100%;display:flex;align-items:center;gap:12px;text-align:left;white-space:normal!important;padding:12px 13px;margin-top:8px;border:1px solid #31435f;border-radius:5px;background:#0d192a;color:var(--ink);cursor:pointer;font:inherit}
+.death-choice{width:100%;display:flex;align-items:center;gap:12px;text-align:left;white-space:normal;padding:12px 13px;margin-top:8px;border:1px solid #31435f;border-radius:5px;background:#0d192a;color:var(--ink);cursor:pointer;font:inherit;transition:border-color .15s,background .15s}
 .death-choice:hover:not(:disabled){background:#14243a;color:var(--ink);border-color:#7dd3fc}
 .death-choice.field:hover:not(:disabled){border-color:#f59e0b}
 .choice-mark{font-size:11px;color:#7186a7;font-weight:800;letter-spacing:.08em}
@@ -107,85 +45,887 @@
 .choice-arrow{font-size:24px;color:#7dd3fc;line-height:1}.field .choice-arrow{color:#f59e0b}
 .death-foot{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #24324d;margin-top:17px;padding-top:11px;font-size:8px;letter-spacing:.09em;color:#60718e}
 @media(max-width:420px){.death-panel{padding:21px 17px 14px}.death-foot{font-size:7px}}
-`;
-        gameHtml = gameHtml.replace("</style>", rescueCss + "</style>");
+.death-choice:hover:not(:disabled){color:var(--ink)!important}.death-choice:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}.death-panel button{white-space:normal!important}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud">
 
+<div class="st"><small>Casco</small><span id="vh"></span><div class="bar"><i id="bh" style="background:#f87171"></i></div></div>
+<div class="st"><small>Combustible</small><span id="vf"></span><div class="bar"><i id="bf" style="background:#7dd3fc"></i></div></div>
+<div class="st"><small>Bodega</small><span id="vc"></span><div class="bar"><i id="bc" style="background:#fcd34d"></i></div></div>
+<div class="st"><small>Celdas láser</small><span id="vcell"></span><div class="bar"><i id="bl" style="background:#fb923c;width:0"></i></div></div>
+<div class="st"><small>Créditos</small><span id="vm"></span></div>
+<div class="st"><small>Deuda</small><span id="vd"></span></div>
 
-        // Controles de pausa y reinicio aislado para pruebas.
-        gameHtml = replaceOnce(gameHtml, '<div id="shop"></div>', `<div id="shop"></div>
-<div id="gameControls" style="position:fixed!important;right:14px!important;top:14px!important;display:flex!important;gap:7px;z-index:10000!important;pointer-events:auto!important;visibility:visible!important;opacity:1!important">
-  <span id="testLabel" style="display:none;align-self:center;color:#fde68a;font-size:11px;font-weight:800">MODO PRUEBAS</span>
-  <button id="pauseBtn" class="gh" type="button">Ⅱ Pausar</button>
-  <button id="restartBtn" type="button" style="border-color:#f87171;color:#fca5a5">↻ Reiniciar pruebas</button>
+<div class="st" style="min-width:240px"><small>Objetivo</small><span id="vo"></span></div>
 </div>
-<div id="pauseOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(3,8,18,.78);align-items:center;justify-content:center;text-align:center;padding:24px">
-  <div style="background:#0e1626;border:1px solid #334155;border-radius:16px;padding:26px;max-width:360px;width:100%">
-    <div style="font-size:28px;font-weight:800;margin-bottom:8px">JUEGO EN PAUSA</div>
-    <div style="color:#94a3b8;margin-bottom:18px">La simulación está detenida.</div>
-    <button id="resumeBtn" type="button">▶ Continuar</button>
-    <button id="pauseRestartBtn" type="button" class="gh" style="margin-left:6px">Reiniciar pruebas</button>
-  </div>
-</div>`, "controles");
-        gameHtml = replaceOnce(gameHtml, "let S=fresh();\ntry{const t=JSON.parse(localStorage.getItem(SAVE));if(t&&t.lv)S=t}catch(e){}", "const TEST_MODE=new URLSearchParams(location.search).has('test');\nlet S=fresh();\nif(!TEST_MODE)try{const t=JSON.parse(localStorage.getItem(SAVE));if(t&&t.lv)S=t}catch(e){}", "modo pruebas");
-        gameHtml = replaceOnce(gameHtml, "const save=()=>{try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};", "const save=()=>{if(TEST_MODE)return;try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};", "guardado de pruebas");
-        gameHtml = replaceOnce(gameHtml, "const keys={},mouse={x:W/2,y:H/2-100,down:0};", `const keys={},mouse={x:W/2,y:H/2-100,down:0};
-let paused=false;
-const setPaused=value=>{paused=!!value;$('pauseOverlay').style.display=paused?'flex':'none';$('pauseBtn').textContent=paused?'▶ Continuar':'Ⅱ Pausar';if(paused){mouse.down=0;mouse.rdown=0;for(const k in keys)keys[k]=0}};
-const restartTest=()=>{if(confirm('Reiniciar la partida de pruebas desde cero?')){localStorage.removeItem(SAVE);location.href=location.pathname+'?test=1&restart='+Date.now()}};
-$('pauseBtn').onclick=()=>setPaused(!paused);$('resumeBtn').onclick=()=>setPaused(false);$('restartBtn').onclick=restartTest;$('pauseRestartBtn').onclick=restartTest;
-if(TEST_MODE)$('testLabel').style.display='inline';`, "estado de pausa");
-        gameHtml = replaceOnce(gameHtml, "    if(docked||d.fl||d.rejoin>0||hd0>=1050)d.act=0;\n    else if(groupDist<rin||d.prov>0){d.act=1;d.hold=Math.max(d.hold||0,8)}\n    else if((d.hold||0)>0&&groupDist<rin+300){d.act=1;d.hold-=dt}\n    else d.act=0;", `    // Histéresis: una escuadra no cambia de ataque a patrulla justo en el borde.
-    if(docked||d.fl||d.rejoin>0||hd0>=1050){d.act=0;d.hold=0}
-    else if(!d.act&&(groupDist<rin||d.prov>0)){d.act=1;d.hold=10}
-    else if(d.act&&groupDist>rin+720&&d.prov<=0){d.act=0;d.hold=0}
-    else if(d.act){d.hold=10}
-    else if(d.prov>0){d.act=1;d.hold=10}
-    else d.act=0;`, "detección estable");
-        gameHtml = replaceOnce(gameHtml, "        const error=dist-R.rg;\n        const vr=d.vx*ux+d.vy*uy;\n        const radial=Math.max(-sp*.7,Math.min(sp*.9,error*1.6-vr*.75));\n        const orbitScale=error>0?Math.max(.12,1-error/Math.max(R.rg*.9,140)):Math.max(.1,1+error/Math.max(R.rg*.8,120));", `        const error=dist-R.rg;
-        const vr=d.vx*ux+d.vy*uy;
-        // Aproximación amortiguada para evitar el vaivén alrededor del radio de ataque.
-        const radial=Math.max(-sp*.62,Math.min(sp*.82,error*1.15-vr*1.25));
-        const orbitScale=Math.max(.22,Math.min(1,Math.abs(error)/Math.max(R.rg*.85,150)+.22));`, "movimiento enemigo");
-        gameHtml = replaceOnce(gameHtml, "  if(S.ct&&S.ct.t==='kill'){const d=near(drones);return d?{x:d.x,y:d.y,c:'#f87171'}:null}\n  if(S.ct){const a=near(ast,a=>a.k===S.ct.k);return a?{x:a.x,y:a.y,c:RES[S.ct.k].c}:base}", `  if(S.ct&&S.ct.t==='kill'){const squad=drones.filter(d=>!d.dead&&Math.hypot(d.hx-(S.ct.zoneX||BX),d.hy-(S.ct.zoneY||BY))<80);const d=near(squad.length?squad:drones);return d?{x:d.x,y:d.y,c:'#f87171'}:null}
-  if(S.ct){const a=near(ast,a=>a.k===S.ct.k&&(!a.missionDeposit||Math.hypot(a.x-S.ct.zoneX,a.y-S.ct.zoneY)<900));return a?{x:a.x,y:a.y,c:RES[S.ct.k].c}:S.ct.zoneX!=null?{x:S.ct.zoneX,y:S.ct.zoneY,c:RES[S.ct.k].c}:base}`, "guía de misión");
-        gameHtml = replaceOnce(gameHtml, "function newCt(){const k=Math.random()<.5,r=['cu','ice','cry'][Math.random()*3|0];\n  S.ct=k?{t:'kill',n:3+(Math.random()*3|0),h:0}:{t:'haul',k:r,n:6,h:0};\n  S.ct.r=k?S.ct.n*90:Math.round(6*RES[r].v*1.8)}", `function newCt(){
-  // Cada contrato asigna un depósito de recursos concreto, protegido por una escuadra.
-  ast=ast.filter(a=>!a.missionDeposit);
-  const guard=squadCenters[(Math.random()*squadCenters.length)|0]||{x:BX+2600,y:BY};
-  const kill=Math.random()<.28,r=['cu','ice','cry'][Math.random()*3|0];
-  S.ct=kill?{t:'kill',n:3+(Math.random()*3|0),h:0,zoneX:guard.x,zoneY:guard.y}
-            :{t:'haul',k:r,n:6,h:0,zoneX:guard.x,zoneY:guard.y};
-  S.ct.r=kill?S.ct.n*90:Math.round(6*RES[r].v*1.8);
-  if(!kill)for(let i=0;i<12;i++){
-    const ang=i*2.399963+Math.random()*.22,rad=230+Math.random()*430;
-    const x=Math.max(220,Math.min(WS-220,guard.x+Math.cos(ang)*rad));
-    const y=Math.max(220,Math.min(WS-220,guard.y+Math.sin(ang)*rad));
-    if(ast.every(a=>Math.hypot(x-a.x,y-a.y)>ASTEROID_MIN_GAP*.72)){
-      const rock=spawnA(x,y,r);rock.missionDeposit=true;ast.push(rock);
-    }
-  }
-}`, "depósitos de misión");
-        gameHtml = replaceOnce(gameHtml, "function update(dt){\n  time+=dt;", "function update(dt){\n  if(paused){hud(st());return}\n  time+=dt;", "pausa de simulación");
-        gameHtml = replaceOnce(gameHtml, "addEventListener('keydown',e=>{if(e.code==='KeyI'||(e.code==='Escape'&&invOpen)){toggleInv();return}startAmb();if(e.code==='Digit1')useAct(0);if(e.code==='Digit2'||e.code==='Digit3')say('Aún no disponible',1200);keys[e.code]=1;if(/^(Space|Arrow)/.test(e.code))e.preventDefault()});", "addEventListener('keydown',e=>{if(e.code==='KeyI'||(e.code==='Escape'&&invOpen)){toggleInv();return}if(e.code==='KeyP'||(e.code==='Escape'&&!invOpen&&!docked)){setPaused(!paused);return}if(paused)return;startAmb();if(e.code==='Digit1')useAct(0);if(e.code==='Digit2'||e.code==='Digit3')say('Aún no disponible',1200);keys[e.code]=1;if(/^(Space|Arrow)/.test(e.code))e.preventDefault()});", "atajo de pausa");
-        gameHtml = replaceOnce(gameHtml, "cv.addEventListener('mousedown',e=>{startAmb();if(e.button===2)mouse.rdown=1;else mouse.down=1});", "cv.addEventListener('mousedown',e=>{if(paused)return;startAmb();if(e.button===2)mouse.rdown=1;else mouse.down=1});", "bloqueo de controles");
-        gameHtml = replaceOnce(gameHtml, "let items=[],bullets=[],parts=[],pb=[],ft=[];", "let items=[],bullets=[],parts=[],pb=[],ft=[],wrecks=[];let deathSequence=false,deathTimer=0,deathMenu=false;\nconst shatter=(img,x,y,angle,scale,cy)=>{if(!img||!img.naturalWidth)return;const cols=4,rows=3,tw=img.naturalWidth/cols,th=img.naturalHeight/rows,ca=Math.cos(angle),sa=Math.sin(angle);for(let yy=0;yy<rows;yy++)for(let xx=0;xx<cols;xx++){const sx=xx*tw,sy=yy*th,lx=(sx+tw/2-150)*scale,ly=(sy+th/2-cy)*scale,vx=lx*ca-ly*sa,vy=lx*sa+ly*ca,a=Math.atan2(vy,vx),kick=55+Math.random()*145;wrecks.push({img,sx,sy,sw:tw,sh:th,x:x+vx,y:y+vy,vx:Math.cos(a)*kick,vy:Math.sin(a)*kick,rot:angle,spin:(Math.random()-.5)*9,scale,life:1.25+Math.random()*.55,max:1.8})}};", "fragmentos nave");
-        gameHtml = replaceOnce(gameHtml, "for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt}parts=parts.filter(q=>q.l>0);", "for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt}parts=parts.filter(q=>q.l>0);\n  for(const w of wrecks){w.x+=w.vx*dt;w.y+=w.vy*dt;w.vx*=Math.pow(.985,dt*60);w.vy*=Math.pow(.985,dt*60);w.rot+=w.spin*dt;w.life-=dt;w.scale*=Math.pow(.975,dt*60)}wrecks=wrecks.filter(w=>w.life>0);", "actualizar fragmentos");
-        gameHtml = replaceOnce(gameHtml, "function rescue(why){\n  const fee=Math.floor(S.credits*.1),s=st();", "function rescue(why){\n  if(deathSequence)return;deathSequence=true;deathTimer=1.8;deathMenu=false;\n  shatter(shipImg,p.x,p.y,p.a+Math.PI/2,.5,280);spark(p.x,p.y,'#f87171',28);noise(.65,.22,650);\n  $('deathOverlay').style.display='none';", "secuencia muerte");
-        gameHtml = replaceOnce(gameHtml, "hit(R.dm);spark(d.x,d.y,'#fde047',14);noise(.3,.14,900);d.dead=1;d.rt=Math.max(10,28-3*t)", "hit(R.dm);spark(d.x,d.y,'#fde047',14);shatter(DR[d.ty].img,d.x,d.y,d.a+Math.PI/2,DR[d.ty].sc,DR[d.ty].cy);noise(.3,.14,900);d.dead=1;d.rt=Math.max(10,28-3*t)", "explosión enemigo embestida");
-        gameHtml = replaceOnce(gameHtml, "if(d.hp<=0){d.dead=1;d.rt=Math.max(8,25-4*tier());", "if(d.hp<=0){shatter(DR[d.ty].img,d.x,d.y,d.a+Math.PI/2,DR[d.ty].sc,DR[d.ty].cy);d.dead=1;d.rt=Math.max(8,25-4*tier());", "explosión enemigo disparo");
-        gameHtml = replaceOnce(gameHtml, "  g.fillStyle='#fca5a5';for(const b of bullets)", "  for(const w of wrecks){const alpha=Math.max(0,Math.min(1,w.life/.55));g.save();g.globalAlpha=alpha;g.translate(w.x-cx,w.y-cy);g.rotate(w.rot);const shrink=Math.max(.12,w.life/w.max);g.scale(w.scale*shrink,w.scale*shrink);g.drawImage(w.img,w.sx,w.sy,w.sw,w.sh,-w.sw/2,-w.sh/2,w.sw,w.sh);g.restore()}g.globalAlpha=1;\n  g.fillStyle='#fca5a5';for(const b of bullets)", "dibujar fragmentos");
+<div id="msg">Ratón orientar · W acelerar · S marcha atrás · Espacio frenar · A/D desplazamiento lateral · clic derecho: láser de minería · I: inventario · explora, recoge recursos, observa mineros y cargueros NPC y completa contratos</div>
 
-        gameHtml = replaceOnce(gameHtml, "if(paused){hud(st());return}", "if(deathSequence){for(const w of wrecks){w.x+=w.vx*dt;w.y+=w.vy*dt;w.vx*=Math.pow(.985,dt*60);w.vy*=Math.pow(.985,dt*60);w.rot+=w.spin*dt;w.life-=dt;w.scale*=Math.pow(.975,dt*60)}wrecks=wrecks.filter(w=>w.life>0);deathTimer-=dt;if(deathTimer<=0&&!deathMenu){deathMenu=true;$('deathOverlay').style.display='flex'}hud(st());return}if(paused){hud(st());return}", "animación de destrucción del jugador");
-        gameHtml = replaceOnce(gameHtml, "if(!docked){g.save();g.translate(W/2,H/2);", "if(!docked&&!deathSequence){g.save();g.translate(W/2,H/2);", "ocultar nave destruida");
-        // La pantalla de rescate ya se monta una sola vez en el bloque anterior.
+<div id="inv"></div>
+<div id="shop"></div>
+<div id="vetaControls" style="position:fixed;top:12px;right:12px;z-index:10000;display:flex;gap:7px;pointer-events:auto">
+ <button id="vetaPause" type="button" style="background:#10243a;color:#dce8f3;border:1px solid #52718f;border-radius:5px;padding:8px 12px;font:700 12px system-ui;cursor:pointer">Ⅱ Pausar</button>
+ <button id="vetaRestart" type="button" style="background:#241923;color:#ffc6c6;border:1px solid #9b5964;border-radius:5px;padding:8px 12px;font:700 12px system-ui;cursor:pointer">↻ Reiniciar</button>
+</div>
+<div id="vetaPauseShade" style="display:none;position:fixed;inset:0;z-index:9998;background:#030812c9;backdrop-filter:blur(3px);align-items:center;justify-content:center">
+ <div style="background:#101b2d;border:1px solid #426080;border-radius:8px;padding:24px;text-align:center;color:#e5edf9;min-width:230px">
+  <div style="font:900 23px system-ui;letter-spacing:.08em;margin-bottom:8px">SIMULACIÓN EN PAUSA</div>
+  <div style="font:12px system-ui;color:#9aabc6;margin-bottom:16px">La expedición está detenida.</div>
+  <button id="vetaResume" type="button" style="background:#10243a;color:#dce8f3;border:1px solid #52718f;border-radius:5px;padding:9px 18px;font-weight:800;cursor:pointer">▶ Continuar</button>
+ </div>
+</div>
 
-        gameHtml = replaceOnce(gameHtml, "if(TEST_MODE)$('testLabel').style.display='inline';", "if(TEST_MODE)$('testLabel').style.display='inline';$('deathRestore').onclick=()=>{const s=st();for(const k of Object.keys(p.cargo))p.cargo[k]=Math.floor((p.cargo[k]||0)*.5);p.x=BX;p.y=BY+DOCK+30;p.vx=p.vy=0;p.hull=s.hull*.5;p.sh=s.sh;p.fuel=s.fuel*.4;p.stuck=0;deathSequence=false;deathMenu=false;wrecks=[];$('deathOverlay').style.display='none';save();say('Remolcado a la base. Se perdió el 50% de la carga.',4500)};", "acción de recuperación");
-        document.open(); document.write(gameHtml); document.close();
-      } catch (error) {
-        console.error(error);
-        document.getElementById("status").innerHTML = "<strong>No se pudo iniciar Veta</strong><small>" + String(error.message || error) + "</small>";
+<div id="deathOverlay" class="death-screen" style="display:none">
+ <section class="death-panel">
+  <div class="death-kicker"><i></i> SEÑAL DE RESCATE RECIBIDA</div>
+  <div class="death-title">NAVE PERDIDA</div>
+  <p class="death-copy">La cabina ha dejado de responder. Un protocolo de emergencia mantiene tu baliza activa; la estación ofrece dos formas de recuperar la expedición.</p>
+  <div class="death-rule"><span>PROTOCOLO DE RECUPERACIÓN</span><p>La carga no asegurada se pierde durante el rescate. Los sistemas de la nave volverán con capacidad limitada.</p></div>
+  <button id="deathRestore" class="death-choice tow" type="button">
+   <span class="choice-mark">01</span><span class="choice-main"><b>Solicitar remolque</b><small>Regresar a la estación · conservar el 50% de la carga</small></span><span class="choice-arrow">›</span>
+  </button>
+  <button id="deathRestoreHere" class="death-choice field" type="button">
+   <span class="choice-mark">02</span><span class="choice-main"><b>Reconstrucción de emergencia</b><small>Volver al lugar del siniestro · perder toda la carga</small></span><span class="choice-arrow">›</span>
+  </button>
+  <div class="death-foot"><span>VETA / SERVICIO DE SALVAMENTO</span><span>NO SE HA PODIDO RECUPERAR EL CASCO</span></div>
+ </section>
+</div>
+<script>
+function rng(seed){ let a=seed>>>0;
+  return ()=>{ a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296; }; }
+
+// [clave, etiqueta, min, max, paso, valor, grupo]
+// Todo es RELATIVO al semiancho W: la nave escala completa.
+const SHIP_CFG=[
+ ['W','Semiancho del cuerpo',14,40,1,24,'Tamaño base'],
+ ['nR','Largo (× ancho)',0.4,2,0.02,1.4,'Proa'],
+ ['a','Ahusamiento',0.8,5,0.05,2,'Proa'],
+ ['b','Redondez',0.8,4,0.05,1.6,'Proa'],
+ ['bR','Largo (× ancho)',0.8,3,0.02,2,'Cuerpo central'],
+ ['bulge','Abombado',-0.4,0.5,0.01,0.1,'Cuerpo central'],
+ ['aR','Largo (× ancho)',0.3,1.2,0.02,0.6,'Popa'],
+ ['aEnd','Ancho final (relativo)',0.3,1.2,0.01,0.7,'Popa'],
+ ['span','Envergadura / separación (× ancho)',0,1.6,0.01,0.6,'Alas'],
+ ['chordR','Cuerda / largo (× largo cuerpo)',0.15,0.95,0.01,0.45,'Alas'],
+ ['pos','Posición (0 = atrás, 1 = adelante)',0,1,0.01,0.3,'Alas'],
+ ['sweepR','Flecha (× envergadura)',-0.3,1.5,0.01,0.5,'Alas'],
+ ['tipR','Punta (× cuerda)',0.15,1,0.01,0.4,'Alas'],
+ ['eN','Cantidad',1,5,1,2,'Motores'],
+ ['eW','Ancho (relativo al hueco)',0.3,0.8,0.01,0.65,'Motores'],
+ ['eR','Largo (× ancho)',0.1,0.5,0.01,0.25,'Motores'],
+ ['sw','Grosor línea',1,6,0.5,2.5,'General'],
+ ['vari','Variación entre semillas',0,1,0.01,0.35,'General'],
+ ['seed','Semilla inicial',1,999,1,1,'General'],
+ ['count','Cantidad de naves',1,24,1,8,'General'],
+];
+const SHIP_NOVAR=['sw','vari','seed','count'];
+const WT={trap:'Trapezoidal / delta',fin:'Aletas curvas',pod:'Cápsulas laterales',bar:'Barras laterales'};
+// Roles: cada uno es un arquetipo con su propio cuerpo, tipo de ala y motores
+const SHIP_ROLES={
+ 'Cohete':      {W:20,nR:1.7,a:2.4,b:1.5,bR:2.3,bulge:.12,aR:.5,aEnd:.55,wt:'fin',span:.8,chordR:.4,pos:0,sweepR:.5,tipR:.3,eN:1,eW:.8,eR:.3},
+ 'Lanzadera':   {W:24,nR:1.0,a:2.8,b:2.2,bR:2,bulge:.05,aR:.5,aEnd:.75,wt:'trap',span:1.2,chordR:.55,pos:.05,sweepR:.5,tipR:.35,eN:3,eW:.6,eR:.25},
+ 'Caza delta':  {W:18,nR:1.9,a:1.5,b:1.2,bR:1.8,bulge:0,aR:.5,aEnd:.8,wt:'trap',span:1.6,chordR:.85,pos:0,sweepR:1.4,tipR:.15,eN:2,eW:.7,eR:.2},
+ 'Explorador':  {W:24,nR:1.4,a:2,b:1.4,bR:2.2,bulge:.2,aR:.6,aEnd:.6,wt:'pod',span:.55,chordR:.5,pos:.3,sweepR:0,tipR:1,eN:1,eW:.75,eR:.3},
+ 'Interceptor': {W:19,nR:1.6,a:2,b:1.3,bR:2.6,bulge:.15,aR:.7,aEnd:.5,wt:'bar',span:.9,chordR:.55,pos:.35,sweepR:0,tipR:1,eN:1,eW:.8,eR:.35},
+ 'Carguero':    {W:36,nR:.5,a:3.5,b:3,bR:2.2,bulge:0,aR:.8,aEnd:1,wt:'trap',span:.3,chordR:.3,pos:.2,sweepR:0,tipR:1,eN:4,eW:.6,eR:.25},
+};
+
+function makeShip(seed,B,wt,P){
+  const r=rng(seed);
+  const v=k=>{const c=SHIP_CFG.find(x=>x[0]===k);
+    const val=B[k]+(r()-.5)*2*P.vari*(c[3]-c[2])*.3;
+    return Math.min(c[3],Math.max(c[2],val));};
+  const W=v('W'),a=v('a'),b=v('b'),bulge=v('bulge'),aEnd=v('aEnd'),
+        pos=v('pos'),chordR=v('chordR'),span=v('span'),sweepR=v('sweepR'),tipR=v('tipR'),
+        eN=Math.round(v('eN')),eW=v('eW');
+  const nLen=v('nR')*W,bLen=v('bR')*W,aLen=v('aR')*W,eLen=v('eR')*W;
+  const cx=150,N=32,f=n=>n.toFixed(1),pt=(x,y)=>f(x)+' '+f(y),poly=ps=>'M'+ps.map(p=>pt(...p)).join('L')+'Z';
+  const yS=330-eLen,yA=yS-aLen,yM=yA-bLen,Wa=W*aEnd;
+  const wMid=t=>W*(1+bulge*Math.sin(Math.PI*t));
+  const wNose=t=>W*Math.pow(Math.max(0,1-Math.pow(t,a)),1/b);
+  const sym=(fn,y0,y1)=>{const R=[],L=[];
+    for(let i=0;i<=N;i++){const t=i/N,y=y0+(y1-y0)*t;R.push([cx+fn(t),y]);L.unshift([cx-fn(t),y]);}
+    return R.concat(L);};
+  const nozzle=(c,y,w,l)=>`<path d="${poly([[c-w,y],[c+w,y],[c+w*1.25,y+l],[c-w*1.25,y+l]])}"/>`;
+
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 340" fill="#fff" stroke="#000" stroke-width="${P.sw}" stroke-linejoin="round">\n`;
+  s+='<g class="s-motores">';
+  const slot=2*Wa/eN,nw=slot*eW/2;
+  for(let i=0;i<eN;i++)s+=nozzle(cx-Wa+slot*(i+.5),yS,nw,eLen);
+  s+='</g>\n';
+
+  if(span*W>1){
+    const chord=chordR*bLen,y2=yA-pos*(bLen-chord),y1=y2-chord,ym=(y1+y2)/2,sp=span*W;
+    const tOf=y=>Math.min(1,Math.max(0,(yA-y)/bLen)),edge=y=>wMid(tOf(y))-2;
+    const rx1=edge(y1),rx2=edge(y2),xb=edge(ym)+2,xt=xb+sp;
+    s+='<g class="s-alas">';
+    for(const k of[1,-1]){
+      const X=x=>cx+k*x;
+      if(wt==='trap'){
+        const tipC=tipR*chord;
+        let ty=y1+sweepR*sp; ty=Math.max(yM,Math.min(ty,yS-tipC));
+        s+=`<path d="${poly([[X(rx1),y1],[X(xt),ty],[X(xt),ty+tipC],[X(rx2),y2]])}"/>`;
+      }else if(wt==='fin'){
+        const tipY=Math.min(y2+sp*.8,yS+eLen*.6);
+        s+=`<path d="M${pt(X(rx1),y1)}Q${pt(X(rx1+sp*.9),y1+(tipY-y1)*.15)} ${pt(X(xt),tipY)}L${pt(X(rx2),y2)}Z"/>`;
+      }else{
+        const pw=wt==='pod'?W*.2:W*.08,pcx=xb+sp*.7+pw,sh=Math.max(1.5,chord*.05);
+        for(const yy of[y1+chord*.25,y1+chord*.75])
+          s+=`<path d="${poly([[X(xb-2),yy-sh],[X(pcx-pw+1),yy-sh],[X(pcx-pw+1),yy+sh],[X(xb-2),yy+sh]])}"/>`;
+        s+=nozzle(X(pcx),y2,pw*.55,eLen*.6);
+        s+= wt==='pod'
+          ? `<path d="M${pt(X(pcx-pw),y2)}L${pt(X(pcx-pw),y1+pw*1.2)}Q${pt(X(pcx-pw),y1)} ${pt(X(pcx),y1-pw*.6)}Q${pt(X(pcx+pw),y1)} ${pt(X(pcx+pw),y1+pw*1.2)}L${pt(X(pcx+pw),y2)}Z"/>`
+          : `<path d="${poly([[X(pcx-pw),y2],[X(pcx-pw),y1],[X(pcx+pw),y1],[X(pcx+pw),y2]])}"/>`;
       }
-    })();
-  </script>
-</body>
-</html>
+    }
+    s+='</g>\n';
+  }
+  s+=`<g class="s-popa"><path d="${poly([[cx-Wa,yS],[cx+Wa,yS],[cx+W,yA],[cx-W,yA]])}"/></g>\n`;
+  s+=`<g class="s-cuerpo"><path d="${poly(sym(wMid,yA,yM))}"/></g>\n`;
+  s+=`<g class="s-proa"><path d="${poly(sym(wNose,yM,yM-nLen))}"/></g>\n`;
+  return s+'</svg>';
+}
+
+
+// ================= ASTEROIDES =================
+// [clave, etiqueta, min, max, paso, valor, grupo]
+const AST_CFG=[
+ ['R','Radio',30,90,1,65,'Tamaño base'],
+ ['elong','Alargamiento',1,2.5,0.02,1.2,'Silueta'],
+ ['rot','Rotación (°)',0,180,1,0,'Silueta'],
+ ['amp','Irregularidad (lóbulos)',0,0.3,0.005,0.12,'Silueta'],
+ ['pinch','Cuello (bilobulado)',0,0.5,0.01,0,'Silueta'],
+ ['verts','Vértices',6,40,1,18,'Contorno'],
+ ['rough','Rugosidad',0,0.25,0.005,0.05,'Contorno'],
+ ['smooth','Suavidad (0 = angular)',0,1,0.01,0.6,'Contorno'],
+ ['cn','Cantidad',0,12,1,4,'Cráteres'],
+ ['cr','Tamaño (× radio)',0.05,0.3,0.005,0.14,'Cráteres'],
+ ['csq','Aplastado',0.4,1,0.01,0.7,'Cráteres'],
+ ['ck','Cantidad',0,6,1,0,'Grietas'],
+ ['crl','Largo (× radio)',0.1,0.8,0.01,0.35,'Grietas'],
+ ['sw','Grosor línea',1,6,0.5,2.5,'General'],
+ ['vari','Variación entre semillas',0,1,0.01,0.35,'General'],
+ ['seed','Semilla inicial',1,999,1,1,'General'],
+ ['count','Cantidad de asteroides',1,24,1,8,'General'],
+];
+const AST_NOVAR=['sw','vari','seed','count'];
+const AST_ROLES={
+ 'Roca':       {},
+ 'Alargado':   {elong:2.1,amp:.08,cn:3,cr:.11},
+ 'Fragmento':  {R:60,elong:1.4,amp:.22,verts:9,rough:.1,smooth:0,cn:1,cr:.1,ck:3,crl:.4},
+ 'Cratérico':  {R:80,elong:1.05,amp:.05,verts:30,rough:.03,smooth:.8,cn:10,cr:.11,csq:.6},
+ 'Bilobulado': {elong:1.9,pinch:.38,amp:.05,smooth:.75,cn:3,cr:.1},
+ 'Guijarro':   {R:34,amp:.08,verts:14,rough:.04,smooth:.9,cn:1,cr:.16,csq:.8},
+};
+
+function makeAst(seed,B,P){
+  const r=rng(seed);
+  const v=k=>{const c=AST_CFG.find(x=>x[0]===k);
+    const val=B[k]+(r()-.5)*2*P.vari*(c[3]-c[2])*.3;
+    return Math.min(c[3],Math.max(c[2],val));};
+  const R=v('R'),el=v('elong'),rot=v('rot')*Math.PI/180,amp=v('amp'),pinch=v('pinch'),
+        n=Math.round(v('verts')),rough=v('rough'),sm=v('smooth'),cn=Math.round(v('cn')),
+        cr=v('cr'),csq=v('csq'),ck=Math.round(v('ck')),crl=v('crl');
+  const f=x=>x.toFixed(1),C=200;
+  // armónicos de baja frecuencia = lóbulos grandes; cuello = estrechamiento central
+  const H=[];for(let k=2;k<=5;k++)H.push([amp*(r()-.5)*2/(k*.6),r()*Math.PI*2,k]);
+  const rad=t=>{let q=1;for(const [a,ph,k] of H)q+=a*Math.cos(k*t+ph);return q*(1-pinch*Math.sin(t)**2);};
+  const sx=Math.sqrt(el),sy=1/sx,cs=Math.cos(rot),sn=Math.sin(rot);
+  let pts=[];
+  for(let i=0;i<n;i++){
+    const t=2*Math.PI*(i+(r()-.5)*.6)/n;
+    const rr=R*Math.max(.35,rad(t)+(r()-.5)*2*rough);
+    const x=Math.cos(t)*rr*sx,y=Math.sin(t)*rr*sy;
+    pts.push([x*cs-y*sn,x*sn+y*cs]);}
+  const m=Math.max(...pts.map(p=>Math.max(Math.abs(p[0]),Math.abs(p[1]))));
+  const k0=m>185?185/m:1; pts=pts.map(p=>[p[0]*k0,p[1]*k0]);
+  const Rs=R*k0,mm=Math.min(m,185);
+  // contorno: Catmull-Rom → Bézier (suavidad 0 = polígono)
+  const q=i=>pts[(i%n+n)%n];
+  let d=`M${f(C+q(0)[0])} ${f(C+q(0)[1])}`;
+  for(let i=0;i<n;i++){const p0=q(i-1),p1=q(i),p2=q(i+1),p3=q(i+2);
+    d+=`C${f(C+p1[0]+(p2[0]-p0[0])*sm/6)} ${f(C+p1[1]+(p2[1]-p0[1])*sm/6)} ${f(C+p2[0]-(p3[0]-p1[0])*sm/6)} ${f(C+p2[1]-(p3[1]-p1[1])*sm/6)} ${f(C+p2[0])} ${f(C+p2[1])}`;}
+  d+='Z';
+  const inside=(x,y)=>{let c=false;for(let i=0,j=n-1;i<n;j=i++){const a=pts[i],b=pts[j];
+    if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
+  const edgeD=(x,y)=>{let mn=1e9;for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n],dx=b[0]-a[0],dy=b[1]-a[1];
+    const t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/(dx*dx+dy*dy||1)));
+    mn=Math.min(mn,Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy));}return mn;};
+
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="#fff" stroke="#000" stroke-width="${P.sw}" stroke-linejoin="round" stroke-linecap="round">\n`;
+  s+=`<g class="s-cuerpo"><path d="${d}"/></g>\n`;
+  // cráteres: siempre dentro del cuerpo, sin solaparse, achatados hacia el borde
+  const cs_=[];let tries=0;
+  while(cs_.length<cn&&tries<120){tries++;
+    const rx=Rs*cr*(.45+r()*.9),x=(r()-.5)*2*mm,y=(r()-.5)*2*mm;
+    if(inside(x,y)&&edgeD(x,y)>rx*1.3&&cs_.every(c=>Math.hypot(c.x-x,c.y-y)>(c.rx+rx)*1.2))cs_.push({x,y,rx});}
+  s+='<g class="s-crateres">'+cs_.map(c=>{const ang=Math.atan2(c.y,c.x)*180/Math.PI+90;
+    return `<ellipse cx="${f(C+c.x)}" cy="${f(C+c.y)}" rx="${f(c.rx)}" ry="${f(c.rx*csq)}" transform="rotate(${f(ang)} ${f(C+c.x)} ${f(C+c.y)})" stroke-width="${(P.sw*.7).toFixed(1)}"/>`;}).join('')+'</g>\n';
+  // grietas: nacen en el borde y entran hacia el centro
+  let cr_='';
+  for(let i=0;i<ck;i++){const p=pts[Math.floor(r()*n)],dist=Math.hypot(p[0],p[1])||1;
+    const ux=-p[0]/dist,uy=-p[1]/dist,L=Math.min(Rs*crl*(.6+r()*.8),dist*.85),nx=-uy,ny=ux;
+    let path=`M${f(C+p[0]*.97)} ${f(C+p[1]*.97)}`;
+    for(let j=1;j<=3;j++){const t=j/3,o=j<3?(r()-.5)*2*Rs*.06:0;
+      path+=`L${f(C+p[0]*.97+ux*L*t+nx*o)} ${f(C+p[1]*.97+uy*L*t+ny*o)}`;}
+    cr_+=`<path d="${path}" fill="none"/>`;}
+  s+=`<g class="s-grietas">${cr_}</g>\n`;
+  return s+'</svg>';
+}
+
+
+// ================= ESTACIONES Y SATÉLITES =================
+// Todo es relativo al radio del núcleo Rc.
+// [clave, etiqueta, min, max, paso, valor, grupo]
+const ST_CFG=[
+ ['Rc','Radio del núcleo',12,40,1,24,'Núcleo'],
+ ['arms','Cantidad',0,8,1,4,'Brazos'],
+ ['armRot','Rotación (°)',0,90,1,45,'Brazos'],
+ ['armL','Largo (× núcleo)',0.6,3.5,0.05,1.8,'Brazos'],
+ ['armW','Grosor (× núcleo)',0.05,0.4,0.01,0.12,'Brazos'],
+ ['modN','Módulos por brazo',0,3,1,1,'Módulos'],
+ ['modS','Tamaño (× núcleo)',0.2,0.9,0.01,0.45,'Módulos'],
+ ['ringR','Radio (× largo de brazo, 0 = sin anillo)',0,1,0.01,0,'Anillo'],
+ ['ringT','Grosor (× núcleo)',0.08,0.45,0.01,0.2,'Anillo'],
+ ['panL','Medio largo (× núcleo, 0 = sin paneles)',0,3,0.05,0,'Paneles solares'],
+ ['panW','Ancho (× núcleo)',0.3,1.5,0.01,0.7,'Paneles solares'],
+ ['panSeg','Segmentos',1,6,1,3,'Paneles solares'],
+ ['panGap','Separación al núcleo',0,1,0.01,0.3,'Paneles solares'],
+ ['ant','Cantidad',0,4,1,0,'Antenas'],
+ ['antL','Largo (× núcleo)',0.4,2,0.02,1,'Antenas'],
+ ['sw','Grosor línea',1,6,0.5,2.5,'General'],
+ ['vari','Variación entre semillas',0,1,0.01,0.3,'General'],
+ ['seed','Semilla inicial',1,999,1,1,'General'],
+ ['count','Cantidad de estaciones',1,24,1,8,'General'],
+];
+const ST_NOVAR=['sw','vari','seed','count'];
+const ST_ROLES={
+ 'Satélite':          {Rc:18,core:'sq',arms:0,panL:2.6,panW:.9,panSeg:4,panGap:.4,ant:1,antL:1.1},
+ 'Estación modular':  {Rc:22,core:'oct',arms:4,armRot:45,armL:1.7,modN:1,modS:.5,panL:2,panW:.7,panSeg:3,ant:2,antL:.9},
+ 'Estación anular':   {Rc:20,core:'circ',arms:6,armRot:0,armL:2,armW:.08,modN:0,ringR:.9,ringT:.22},
+ 'Nodo':              {Rc:30,core:'hex',arms:3,armRot:90,armL:1.2,armW:.15,modN:1,modS:.6,modShape:'circ',ant:1,antL:.8},
+ 'Torre cruz':        {Rc:16,core:'sq',arms:4,armRot:0,armL:2.8,armW:.1,modN:2,modS:.3,modShape:'circ'},
+ 'Laboratorio':       {Rc:18,core:'sq',arms:2,armRot:0,armL:2.4,armW:.12,modN:1,modS:.45,panAt:'brazos',panL:1.3,panW:.55,panSeg:4,ant:2,antL:.9},
+};
+
+function makeStation(seed,B,P){
+  const r=rng(seed);
+  const v=k=>{const c=ST_CFG.find(x=>x[0]===k);
+    const val=B[k]+(r()-.5)*2*P.vari*(c[3]-c[2])*.3;
+    return Math.min(c[3],Math.max(c[2],val));};
+  let Rc=v('Rc');
+  const arms=Math.round(v('arms')),armRot=v('armRot'),armL=v('armL'),armW=v('armW'),
+        modN=Math.round(v('modN')),modS=v('modS'),ringR=v('ringR'),ringT=v('ringT'),
+        panL=v('panL'),panW=v('panW'),panSeg=Math.round(v('panSeg')),panGap=v('panGap'),
+        ant=Math.round(v('ant')),antL=v('antL');
+  const {core,modShape,panAt}=B;
+  const hasArms=arms>0,hasPan=panL>.05,hasRing=ringR>.05&&arms>=2,hasMod=hasArms&&modN>0;
+  // el conjunto siempre cabe en el lienzo: se reduce el núcleo si hace falta
+  let ext=1.3;
+  if(hasArms)ext=Math.max(ext,1+armL+(hasMod?modS*.7:0));
+  if(hasPan)ext=Math.max(ext,panAt==='brazos'&&hasArms?Math.hypot(1+armL,panL)+.1:1+panGap+2*panL);
+  if(hasRing)ext=Math.max(ext,1+ringR*armL+ringT/2);
+  if(ant)ext=Math.max(ext,1+antL+.15);
+  Rc*=Math.min(1,185/(Rc*ext));
+
+  const f=n=>n.toFixed(1),P2=a=>'M'+a.map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';
+  const rectP=(x,y,w,h)=>P2([[x,y],[x+w,y],[x+w,y+h],[x,y+h]]);
+  const circP=(cx,cy,q)=>`M${f(cx-q)} ${f(cy)}a${f(q)} ${f(q)} 0 1 0 ${f(2*q)} 0a${f(q)} ${f(q)} 0 1 0 ${f(-2*q)} 0Z`;
+  const D=Rc*(1+armL),angs=Array.from({length:arms},(_,j)=>armRot+j*360/arms);
+  const panel=(tx,ty,rot,L,T)=>{
+    let o=`<g transform="translate(${f(tx)} ${f(ty)}) rotate(${f(rot)})"><path d="${rectP(-L,-T/2,2*L,T)}"/>`;
+    for(let i=1;i<panSeg;i++){const x=-L+2*L*i/panSeg;
+      o+=`<line x1="${f(x)}" x2="${f(x)}" y1="${f(-T/2)}" y2="${f(T/2)}" stroke-width="${(P.sw*.5).toFixed(1)}"/>`;}
+    return o+'</g>';};
+
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="#fff" stroke="#000" stroke-width="${P.sw}" stroke-linejoin="round">\n<g transform="translate(200 200)">\n`;
+  if(hasRing){const rr=Rc*(1+ringR*armL),t=ringT*Rc;
+    s+=`<g class="s-anillo"><path fill-rule="evenodd" d="${circP(0,0,rr+t/2)}${circP(0,0,rr-t/2)}"/></g>\n`;}
+  s+='<g class="s-antenas">';
+  for(let i=0;i<ant;i++){const a=-90+i*360/ant,e=Rc*(1+antL);
+    s+=`<g transform="rotate(${f(a)})"><line x1="${f(Rc*.9)}" x2="${f(e)}" y1="0" y2="0"/><path d="${circP(e+Rc*.1,0,Rc*.12)}"/></g>`;}
+  s+='</g>\n<g class="s-paneles">';
+  if(hasPan){const L=panL*Rc,T=panW*Rc,g=panGap*Rc;
+    if(panAt==='brazos'&&hasArms)
+      for(const a of angs)s+=panel(D*Math.cos(a*Math.PI/180),D*Math.sin(a*Math.PI/180),a+90,L,T);
+    else for(const k of[1,-1]){
+      if(g>0)s+=`<path d="${rectP(k>0?0:-(Rc+g),-T*.06,Rc+g,T*.12)}"/>`;
+      s+=panel(k*(Rc+g+L),0,0,L,T);}}
+  s+='</g>\n<g class="s-brazos">';
+  for(const a of angs)s+=`<g transform="rotate(${f(a)})"><path d="${rectP(0,-armW*Rc,D,armW*Rc*2)}"/></g>`;
+  s+='</g>\n<g class="s-modulos">';
+  if(hasMod)for(const a of angs){s+=`<g transform="rotate(${f(a)})">`;
+    for(let i=1;i<=modN;i++){const d=Rc+armL*Rc*i/modN,S=modS*Rc;
+      s+=modShape==='circ'?`<path d="${circP(d,0,S*.6)}"/>`:`<path d="${rectP(d-S*.7,-S/2,S*1.4,S)}"/>`;}
+    s+='</g>';}
+  s+='</g>\n<g class="s-nucleo">';
+  if(core==='circ')s+=`<path d="${circP(0,0,Rc)}"/>`;
+  else{const N={hex:6,oct:8,sq:4}[core]||6,off={hex:0,oct:22.5,sq:45}[core]||0,q=Rc*(core==='sq'?1.25:1);
+    s+=`<path d="${P2(Array.from({length:N},(_,i)=>{const t=(off+i*360/N)*Math.PI/180;return[q*Math.cos(t),q*Math.sin(t)];}))}"/>`;}
+  return s+'</g>\n</g>\n</svg>';
+}
+
+
+
+// ================= JUEGO =================
+const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d');
+let W,H;
+const fit=()=>{const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)};
+addEventListener('resize',fit);fit();
+
+// --- arte: se reutiliza el generador SVG, recoloreado para fondo oscuro ---
+const dflt=c=>Object.fromEntries(c.map(x=>[x[0],x[5]]));
+const sprite=(svg,w,h,fill,stroke)=>{
+  const s=svg.replace('fill="#fff" stroke="#000"','fill="'+fill+'" stroke="'+stroke+'"').replace('<svg ','<svg width="'+w+'" height="'+h+'" ');
+  const i=new Image();i.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);return i;};
+const blit=(img,x,y)=>{if(img.complete&&img.naturalWidth)g.drawImage(img,x,y)};
+
+const RES={
+ iron:{n:'Hierro',v:6,hard:1,c:'#9ca3af',roles:['Roca','Cratérico']},
+ cu:{n:'Cobre',v:14,hard:1.3,c:'#fb923c',roles:['Alargado','Fragmento']},
+ ice:{n:'Hielo',v:9,hard:.7,c:'#7dd3fc',roles:['Bilobulado','Guijarro']},
+ cry:{n:'Cristal',v:45,hard:2,c:'#f0abfc',roles:['Guijarro','Fragmento']}};
+const AS={};
+for(const k in RES)AS[k]=[1,2,3,4,5,6,7,8].map(i=>sprite(makeAst(i*17+k.charCodeAt(0),Object.assign(dflt(AST_CFG),AST_ROLES[RES[k].roles[i%2]]),{vari:.35,sw:i<5?7:3.5}),400,400,'#0d1424',RES[k].c));
+const SB=n=>Object.assign(dflt(SHIP_CFG),SHIP_ROLES[n]);
+const shipImg=sprite(makeShip(7,SB('Explorador'),'pod',{vari:.1,sw:4.4}),300,340,'#0d1a2b','#7dd3fc');
+const droneImg=sprite(makeShip(3,SB('Interceptor'),'bar',{vari:.1,sw:4.8}),300,340,'#2a1010','#f87171');
+const artImg=sprite(makeShip(9,SB('Interceptor'),'bar',{vari:.1,sw:7}),300,340,'#2a1a0d','#fb923c');
+const baseImg=sprite(makeStation(5,Object.assign(dflt(ST_CFG),ST_ROLES['Estación modular']),{vari:0,sw:1.2}),400,400,'#0d1a2b','#fcd34d');
+
+// --- progreso ---
+const SAVE='veta-mvp1',MAXL=5;
+const UP=[['laser','Láser','Más potencia de minado',60],['hold','Bodega','+8 de capacidad',50],['engine','Motor','Más aceleración y velocidad',70],
+ ['tank','Tanque','+30 de combustible',40],['hull','Casco','+25 de casco',80],['mag','Imán','Mayor alcance de recogida',50]];
+const fresh=()=>({credits:30,debt:5000,cells:10,store:{iron:0,cu:0,ice:0,cry:0},lv:{laser:0,hold:0,engine:0,tank:0,hull:0,mag:0}});
+let S=fresh();
+try{const t=JSON.parse(localStorage.getItem(SAVE));if(t&&t.lv)S=t}catch(e){}
+if(S.debt==null)S.debt=5000;
+if(!S.store)S.store={iron:0,cu:0,ice:0,cry:0};
+if(S.cells==null)S.cells=10;
+const save=()=>{try{localStorage.setItem(SAVE,JSON.stringify(S))}catch(e){}};
+const cost=k=>Math.round(UP.find(u=>u[0]===k)[3]*Math.pow(1.7,S.lv[k]));
+const st=()=>({dmg:30*(1+.45*S.lv.laser),cap:12+8*S.lv.hold,acc:420*(1+.12*S.lv.engine),vmax:300*(1+.1*S.lv.engine),
+ fuel:100+30*S.lv.tank,hull:100+25*S.lv.hull,sh:90+25*S.lv.hull,mag:90+45*S.lv.mag});
+
+// --- mundo ---
+const WS=16000,BX=WS/2,BY=WS/2,DOCK=300,RANGE=190,R=rng(42);
+// La escala de zona crece junto con el mundo para conservar la distribucion
+// relativa de recursos y la dificultad por distancia.
+const zone=(x,y)=>Math.hypot(x-BX,y-BY)/5600;
+function pickRes(z){const t=Math.random();
+  if(z<.6)return t<.75?'iron':'ice';
+  if(z<1)return t<.4?'iron':t<.7?'cu':'ice';
+  return t<.2?'iron':t<.6?'cu':'ice';}
+function spawnA(x,y,kk){const k=kk||pickRes(zone(x,y)),r=18+Math.pow(Math.random(),1.8)*72,hp=r*2.2*RES[k].hard;
+  const a={x,y,r,k,img:AS[k][(r>=35?4:0)+((Math.random()*4)|0)],rot:Math.random()*6.28,hp,max:hp};
+  a.colR=asteroidVisualRadius(a);
+  return a}
+
+// Radio aproximado del contorno REAL dibujado para cada asteroide.
+// a.r controla la escala de juego, pero el SVG puede ser más ancho o alargado.
+function asteroidVisualRadius(a){
+  if(Number.isFinite(a.colR))return a.colR;
+  const imgs=AS[a.k]||[],idx=Math.max(0,imgs.indexOf(a.img));
+  const roleName=RES[a.k].roles[(idx+1)%2],role=AST_ROLES[roleName]||{};
+  const baseR=role.R??65,elong=role.elong??1.2,amp=role.amp??.12,rough=role.rough??.05;
+  const extent=baseR*Math.sqrt(Math.max(elong,1/elong))*(1+amp*2.15+rough);
+  return extent*(a.r/60);
+}
+function droneAsteroidRadius(d){return d.ty==='a'?78:d.ty==='h'?28:d.ty==='c'?29:d.ty==='k'?21:(d.r||18)}
+
+// Ajusta la velocidad deseada para que una nave grande rodee la roca en vez
+// de empujarla fotograma tras fotograma contra la misma superficie.
+function steerAroundAsteroids(o,vx,vy,shipR,gx,gy,margin,obstacles=ast){
+  const speed=Math.hypot(vx,vy);
+  if(speed<.1)return {vx,vy};
+  let blocked=false;
+  for(const a of obstacles){
+    const dx=o.x-a.x,dy=o.y-a.y,dist=Math.hypot(dx,dy);
+    if(dist<.001)continue;
+    const safe=asteroidVisualRadius(a)+shipR+2;
+    if(dist<safe+margin&&(vx*dx+vy*dy)<0){blocked=true;break}
+  }
+  if(!blocked)return {vx,vy};
+
+  // Probar desvíos en ambos sentidos y elegir el que no atraviese las rocas
+  // cercanas y mantenga el mayor avance hacia el destino.
+  const goalLen=Math.hypot(gx-o.x,gy-o.y)||1,ux=(gx-o.x)/goalLen,uy=(gy-o.y)/goalLen;
+  const baseAngle=Math.atan2(vy,vx);
+  const offsets=[0,25,-25,40,-40,55,-55,70,-70,85,-85,100,-100,120,-120,145,-145,170,-170,180];
+  const horizon=Math.max(1.8,Math.min(3.2,margin/Math.max(speed,1)+2.0));
+  let best=null;
+  for(const degrees of offsets){
+    const angle=baseAngle+degrees*Math.PI/180,cx=Math.cos(angle)*speed,cy=Math.sin(angle)*speed;
+    let clearance=Infinity;
+    for(let j=1;j<=6;j++){
+      const t=horizon*j/6,px=o.x+cx*t,py=o.y+cy*t;
+      for(const a of obstacles){
+        const safe=asteroidVisualRadius(a)+shipR+3;
+        clearance=Math.min(clearance,Math.hypot(px-a.x,py-a.y)-safe);
+      }
+    }
+    const progress=cx*ux+cy*uy;
+    const collisionPenalty=clearance<0?650+Math.abs(clearance)*18:clearance<10?(10-clearance)*6:0;
+    const spaceBonus=Math.min(65,clearance)*.45;
+    const side=Math.sign(degrees)||1;
+    const persistence=(o.avoidSide===side?18:0);
+    const score=progress+spaceBonus-collisionPenalty+persistence;
+    if(!best||score>best.score)best={vx:cx,vy:cy,score,side};
+  }
+  if(best){o.avoidSide=best.side;return {vx:best.vx,vy:best.vy};}
+  return {vx,vy};
+}
+
+// Corrección iterativa de penetración. Se ejecuta antes y después del avance
+// para manejar tanto solapes iniciales como cruces entre fotogramas.
+function resolveAsteroidOverlap(o,shipR,passes=6){
+  for(let pass=0;pass<passes;pass++){
+    let corrected=false;
+    for(const a of ast){
+      const dx=o.x-a.x,dy=o.y-a.y,dist=Math.hypot(dx,dy);
+      const minDist=asteroidVisualRadius(a)+shipR+1;
+      if(dist>=minDist)continue;
+      let nx,ny;
+      if(dist>.001){nx=dx/dist;ny=dy/dist}
+      else{const speed=Math.hypot(o.vx||0,o.vy||0);nx=speed>.001?-(o.vx||0)/speed:1;ny=speed>.001?-(o.vy||0)/speed:0}
+      o.x=a.x+nx*minDist;o.y=a.y+ny*minDist;
+      const vn=(o.vx||0)*nx+(o.vy||0)*ny;
+      if(vn<0){o.vx-=vn*nx;o.vy-=vn*ny}
+      corrected=true;
+    }
+    if(!corrected)break;
+  }
+}
+let ast=[];
+// Mundo más amplio y cinturones de roca menos densos: dejamos corredores
+// despejados para navegar, combatir y descubrir nuevos depósitos.
+const ASTEROID_MIN_GAP=440,ASTEROID_START_COUNT=260;
+for(let i=0;i<ASTEROID_START_COUNT;i++){
+  let x,y,tries=0,clear=false;
+  do{
+    x=R()*WS;y=R()*WS;tries++;
+    clear=Math.hypot(x-BX,y-BY)>=650&&ast.every(a=>Math.hypot(x-a.x,y-a.y)>=ASTEROID_MIN_GAP);
+  }while(!clear&&tries<900);
+  if(clear)ast.push(spawnA(x,y));
+}
+const drones=[]; // Sin enemigos ni escuatráfico espacial.
+// Cristales distribuidos como depósitos naturales por el mapa.
+for(let i=0;i<34;i++){const x=260+R()*(WS-520),y=260+R()*(WS-520);if(Math.hypot(x-BX,y-BY)>900&&ast.every(a=>Math.hypot(x-a.x,y-a.y)>ASTEROID_MIN_GAP*.65))ast.push(spawnA(x,y,'cry'));}
+const stars=Array.from({length:150},()=>[Math.random(),Math.random(),.1+Math.random()*.4,1+(Math.random()*1.6|0)]);
+let items=[],bullets=[],parts=[],pb=[],ft=[],wrecks=[];
+let deathSequence=false,deathTimer=0,deathMenu=false;
+let deathFx=null;
+const shatterPlayer=(x,y,angle)=>{
+  const cols=4,rows=3,tw=300/cols,th=340/rows,scale=.5;
+  const ca=Math.cos(angle),sa=Math.sin(angle);
+  for(let yy=0;yy<rows;yy++)for(let xx=0;xx<cols;xx++){
+    const sx=xx*tw,sy=yy*th;
+    const lx=(sx+tw/2-150)*scale,ly=(sy+th/2-280)*scale;
+    const vx=lx*ca-ly*sa,vy=lx*sa+ly*ca,a=Math.atan2(vy,vx);
+    const kick=95+Math.random()*185;
+    wrecks.push({sx,sy,sw:tw,sh:th,x:x+vx,y:y+vy,
+      vx:Math.cos(a)*kick,vy:Math.sin(a)*kick,
+      rot:angle,spin:(Math.random()-.5)*10,scale,
+      life:3.45+Math.random()*.65,max:4.1});
+  }
+  deathFx={x,y,t:0,duration:4.5};
+};
+const mk0=()=>({iron:0,cu:0,ice:0,cry:0});
+const p={x:BX,y:BY+DOCK+60,vx:0,vy:0,a:-Math.PI/2,hull:100,fuel:100,cargo:mk0(),beam:0,thrust:0,stuck:0,heat:0,oh:0,av:0,sh:60,shT:9,cc:0,slots:[]};
+{const s=st();p.hull=s.hull;p.fuel=s.fuel;p.sh=s.sh}
+const tot=()=>Object.values(p.cargo).reduce((a,b)=>a+b,0);
+const cargoVal=()=>Object.entries(p.cargo).reduce((a,[k,n])=>a+n*RES[k].v,0);
+let docked=false,dockCd=0,msgT=0,fullT=0,spawnT=0,cryT=0,time=0;
+const keys={},mouse={x:W/2,y:H/2-100,down:0};
+
+let vetaPaused=false;
+const vetaPauseSet=value=>{
+ vetaPaused=!!value;
+ const shade=document.getElementById('vetaPauseShade');
+ if(shade)shade.style.display=vetaPaused?'flex':'none';
+ const b=document.getElementById('vetaPause');
+ if(b)b.textContent=vetaPaused?'▶ Continuar':'Ⅱ Pausar';
+ mouse.down=0;mouse.rdown=0;
+ for(const k in keys)keys[k]=0;
+};
+document.getElementById('vetaPause').addEventListener('click',()=>vetaPauseSet(!vetaPaused));
+document.getElementById('vetaResume').addEventListener('click',()=>vetaPauseSet(false));
+document.getElementById('vetaRestart').addEventListener('click',()=>{
+ // Reinicio limpio: eliminar el guardado y navegar a una URL nueva para evitar
+ // que el navegador restaure el documento anterior desde caché/bfcache.
+ try{localStorage.removeItem(SAVE)}catch(e){}
+ try{sessionStorage.clear()}catch(e){}
+ const cleanUrl=location.href.split('#')[0].split('?')[0]+'?newgame='+Date.now();
+ location.replace(cleanUrl);
+});
+
+const say=(t,ms=2500)=>{$('msg').textContent=t;msgT=ms/1000};
+const drop=(x,y,k,n)=>{for(let i=0;i<n;i++){const a=Math.random()*6.28,v=40+Math.random()*90;
+  items.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,k,life:60})}};
+const spark=(x,y,c,n)=>{for(let i=0;i<n;i++){const a=Math.random()*6.28,v=30+Math.random()*90;
+  parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:.4+Math.random()*.3,c})}};
+let AC,lastTick=0,flash=0,lastWarn=-9;const beep=(f,d=.06,v=.05,ty='square')=>{try{AC=AC||new AudioContext();const o=AC.createOscillator(),gn=AC.createGain();o.type=ty;o.frequency.value=f;gn.gain.value=v;o.connect(gn);gn.connect(AC.destination);o.start();gn.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.stop(AC.currentTime+d)}catch(e){}};
+const noise=(d=.15,v=.08,f=1200)=>{try{AC=AC||new AudioContext();const n=AC.sampleRate*d|0,b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),fl=AC.createBiquadFilter(),gn=AC.createGain();s.buffer=b;fl.type='lowpass';fl.frequency.value=f;gn.gain.value=v;s.connect(fl);fl.connect(gn);gn.connect(AC.destination);s.start()}catch(e){}};
+let amb=null;
+function startAmb(){return;try{AC=AC||new AudioContext();
+  const mk=(t,f,v)=>{const o=AC.createOscillator(),gn=AC.createGain();o.type=t;o.frequency.value=f;gn.gain.value=v;o.connect(gn);gn.connect(AC.destination);o.start();return gn};
+  const lo=AC.createOscillator(),lg=AC.createGain();lo.frequency.value=2.2;lg.gain.value=.02;
+  const hum=mk('sawtooth',48,.012),bat=mk('triangle',73,0);lo.connect(lg);lg.connect(bat.gain);lo.start();amb={hum,bat}}catch(e){}}
+const float=(x,y,t,c)=>ft.push({x,y,t,c,l:1.1});
+function guide(){const near=(arr,f)=>{let b=null,bd=1e9;for(const o of arr){if(o.dead||(f&&!f(o)))continue;const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<bd){bd=d;b=o}}return b};
+  const base={x:BX,y:BY,c:'#fcd34d'};
+  if(ctDone()||tot()>=st().cap)return base;
+  if(S.ct){const a=near(ast,a=>a.k===S.ct.k);return a?{x:a.x,y:a.y,c:RES[S.ct.k].c}:base}
+  if(tot())return base;const a=near(ast,a=>a.k==='iron'||a.k==='ice');return a?{x:a.x,y:a.y,c:'#9ca3af'}:base}
+const mv=(d,tx,ty,sp,dt)=>{const dx=tx-d.x,dy=ty-d.y,l=Math.hypot(dx,dy)||1;d.x+=dx/l*sp*dt;d.y+=dy/l*sp*dt};
+
+const act={cd:0,on:0};
+function useAct(i){if(docked||invOpen||act.cd>0)return;act.on=3.5;act.cd=14;beep(700,.2,.06,'sine');say('Escudo activo: 3.5 s',1200)}
+function hit(n){if(act.on>0){beep(900,.05,.05,'sine');return}flash=.3;noise(.15,.1,1500);beep(150,.12,.08,'sawtooth');p.shT=0;if(p.sh>0){const a=Math.min(p.sh,n*.7);p.sh-=a;n-=a}p.hull-=n}
+const tot2=o=>Object.values(o).reduce((a,b)=>a+b,0),SC=40,PX={iron:1,cu:1,ice:1,cry:1};
+const rollPx=()=>{for(const k in RES)PX[k]=Math.round((.65+Math.random()*.8)*100)/100};
+const pv=k=>Math.max(1,Math.round(RES[k].v*PX[k])),shipVal=()=>Object.entries(p.cargo).reduce((a,[k,n])=>a+n*pv(k),0);
+function grids(){const s=st();
+  const cell=(z,k)=>`<div class="cell" draggable="true" data-z="${z}" data-k="${k}" style="background:${RES[k].c}" title="${RES[k].n}"></div>`;
+  const fill=(z,o,cap)=>{let h='';for(const k in RES)for(let i=0;i<o[k];i++)h+=cell(z,k);for(let i=tot2(o);i<cap;i++)h+='<div class="cell e"></div>';return h};
+  return `<div class="grids"><div class="gz" data-z="ship"><small>Bodega de la nave ${tot()}/${s.cap}</small><div class="g">${shipGrid()}</div></div>`
+  +`<div class="gz" data-z="store"><small>Almacén de la estación ${tot2(S.store)}/${SC} (seguro si te remolcan)</small><div class="g">${fill('store',S.store,SC)}</div></div></div>`
+  +`<div class="gz sell" data-z="sell"><small>Arrastra aquí para vender (Shift = todo el tipo). Clic en un cuadro lo pasa nave ↔ almacén. Precios de hoy:</small>`
+  +Object.keys(RES).map(k=>`<span style="color:${RES[k].c}">${RES[k].n} ${pv(k)}${PX[k]>1.05?' ▲':PX[k]<.95?' ▼':''}</span>`).join(' · ')+'</div>'}
+function mvUnit(f,t,k,all,ix){if(f===t)return;if((t==='sell'||t==='store')&&!docked)return;const src=f==='ship'?p.cargo:S.store;let n=all?src[k]:Math.min(1,src[k]);
+  if(f==='ship'&&ix!=null&&!all)p.slots[ix]=null;
+  if(t==='drop'){src[k]-=n}
+  else if(t==='sell'){S.credits+=n*pv(k);src[k]-=n;if(n)beep(1000,.08,.05,'sine')}
+  else{const dst=t==='ship'?p.cargo:S.store,cap=t==='ship'?st().cap:SC;n=Math.min(n,cap-tot2(dst));dst[k]+=n;src[k]-=n;if(t==='ship'&&f==='store'&&ix!=null&&n&&!p.slots[ix])p.slots[ix]=k}
+  save();redraw()}
+function sync(){const cap=st().cap,s=p.slots;s.length=cap;for(let i=0;i<cap;i++)if(s[i]===undefined)s[i]=null;
+  const c=mk0();for(let i=0;i<cap;i++){const k=s[i];if(k){if(c[k]<p.cargo[k])c[k]++;else s[i]=null}}
+  for(const k in RES)while(c[k]<p.cargo[k]){const j=s.indexOf(null);if(j<0)break;s[j]=k;c[k]++}}
+function shipGrid(){sync();return p.slots.map((k,i)=>k?`<div class="cell" draggable="true" data-z="ship" data-i="${i}" data-k="${k}" style="background:${RES[k].c}" title="${RES[k].n}"></div>`:`<div class="cell e" data-z="ship" data-i="${i}"></div>`).join('')}
+let invOpen=false;
+function invRender(){const s=st();$('inv').innerHTML=`<h2 style="margin:0 0 6px;font-size:16px">Inventario de la nave</h2><div class="gz" data-z="ship"><small>Bodega ${tot()}/${s.cap} · valor ${cargoVal()} cr · arrastra para reordenar</small><div class="g">${shipGrid()}</div></div><div class="gz sell" data-z="drop" style="border-color:#f87171"><small>Arrastra aquí para tirar al espacio</small></div><div style="margin-top:8px;color:var(--mute)">Pulsa I o Esc para cerrar · el juego está en pausa</div>`}
+const redraw=()=>docked?shop():invRender();
+const toggleInv=()=>{if(docked)return;invOpen=!invOpen;for(const q in keys)keys[q]=0;mouse.down=mouse.rdown=0;$('inv').style.display=invOpen?'block':'none';if(invOpen)invRender()};
+const wire=el=>{
+  el.addEventListener('dragstart',e=>{const c=e.target.closest('.cell[data-k]');if(c)e.dataTransfer.setData('t',[c.dataset.z,c.dataset.k,c.dataset.i||''].join('|'))});
+  el.addEventListener('dragover',e=>e.preventDefault());
+  el.addEventListener('drop',e=>{e.preventDefault();const[f,k,i]=(e.dataTransfer.getData('t')||'||').split('|');if(!k)return;
+    const c=e.target.closest('.cell[data-i]'),z=e.target.closest('.gz');
+    if(c&&f==='ship'){const a=+i,b=+c.dataset.i;[p.slots[a],p.slots[b]]=[p.slots[b],p.slots[a]];redraw();return}
+    if(c&&f==='store'){mvUnit('store','ship',k,0,+c.dataset.i);return}
+    if(z)mvUnit(f,z.dataset.z,k,e.shiftKey,i===''?null:+i)});
+  el.addEventListener('click',e=>{const c=e.target.closest('.cell[data-k]');if(c&&docked)mvUnit(c.dataset.z,c.dataset.z==='ship'?'store':'ship',c.dataset.k,e.shiftKey,c.dataset.i?+c.dataset.i:null)})};
+wire($('shop'));wire($('inv'));
+
+
+
+// --- naves NPC ---
+const npcImg=sprite(makeShip(11,SB('Explorador'),'pod',{vari:.1,sw:4.4}),300,340,'#0d2a1b','#86efac');
+// Carguero NPC con la geometría procedural existente; usa el arquetipo Lanzadera para diferenciarlo de los drones Artilleros.
+const trImg=sprite(makeShip(21,SB('Lanzadera'),SB('Lanzadera').wt,{vari:.1,sw:2}),300,340,'#2a210d','#fbbf24');
+const mkNpc=(kind,x,y)=>({kind,x,y,sx:x,sy:y,a:0,s:'seek',t:0,c:0,tg:null,img:kind==='m'?npcImg:trImg,beam:0});
+let npcs=[],trT=15;
+for(let i=0;i<5;i++){const a=R()*6.28,r=700+R()*1100;npcs.push(mkNpc('m',BX+Math.cos(a)*r,BY+Math.sin(a)*r))}
+function updNpcOld(dt){
+  if((trT-=dt)<=0){trT=22+Math.random()*20;const a=Math.random()*6.28,n=mkNpc('t',BX+Math.cos(a)*3200,BY+Math.sin(a)*3200);n.s='ret';npcs.push(n)}
+  for(const n of npcs){
+    const go=(tx,ty,sp)=>{const dx=tx-n.x,dy=ty-n.y,l=Math.hypot(dx,dy)||1;let da=Math.atan2(dy,dx)-n.a;da=Math.atan2(Math.sin(da),Math.cos(da));n.a+=Math.max(-1.2*dt,Math.min(1.2*dt,da));n.x+=Math.cos(n.a)*sp*dt;n.y+=Math.sin(n.a)*sp*dt;return l};
+    n.beam=0;
+    if(n.s==='dock'){if((n.t-=dt)<=0){n.s=n.kind==='t'?'leave':'seek';n.c=0;n.x=BX;n.y=BY+DOCK}continue}
+    if(n.s==='ret'){if(go(BX,BY,n.kind==='t'?90:55)<DOCK-30){n.s='dock';n.t=n.kind==='t'?4:6}}
+    else if(n.s==='leave'){if(go(n.sx,n.sy,90)<80)n.dead=1}
+    else if(n.s==='seek'){
+      if(!n.tg||n.tg.dead){n.tg=null;let bd=1e9;for(const a of ast){if(a.k==='cry'||a.dead||Math.hypot(a.x-BX,a.y-BY)>2400)continue;const dd=Math.hypot(a.x-n.x,a.y-n.y);if(dd<bd){bd=dd;n.tg=a}}}
+      if(n.tg&&go(n.tg.x,n.tg.y,60)<n.tg.r+70)n.s='mine'}
+    else if(n.s==='collect'){let b=null,bd=260;for(const it of items){if(it.life<=0)continue;const d=Math.hypot(it.x-n.x,it.y-n.y);if(d<bd){bd=d;b=it}}
+      if(!b){n.s=n.c>=4?'ret':'seek';n.tg=null}else if(go(b.x,b.y,70)<22){b.life=-1;n.c++}}
+    else if(n.s==='mine'){const a=n.tg;if(!a||a.dead){n.s='seek';continue}
+      let da=Math.atan2(a.y-n.y,a.x-n.x)-n.a;da=Math.atan2(Math.sin(da),Math.cos(da));n.a+=Math.max(-dt,Math.min(dt,da));
+      n.beam=Math.max(10,Math.hypot(a.x-n.x,a.y-n.y)-a.r*.8);a.hp-=7*dt;a.hit=.1;
+      if(a.hp<=0){a.dead=1;drop(a.x,a.y,a.k,Math.ceil(a.r/22));spark(a.x,a.y,RES[a.k].c,10);n.s='collect'}}}
+  npcs=npcs.filter(n=>!n.dead);ast=ast.filter(a=>!a.dead)}
+function updNpc(dt){
+  if((trT-=dt)<=0){trT=22+Math.random()*20;const a=Math.random()*6.28,n=mkNpc('t',BX+Math.cos(a)*3200,BY+Math.sin(a)*3200);n.s='ret';npcs.push(n)}
+  for(const n of npcs){
+    n.vx=n.vx||0;n.vy=n.vy||0;n.beam=0;
+    const face=ang=>{let da=ang-n.a;da=Math.atan2(Math.sin(da),Math.cos(da));n.a+=Math.max(-1.5*dt,Math.min(1.5*dt,da))};
+    // movimiento con llegada: la velocidad deseada baja a 0 al acercarse al punto de parada (sin dar vueltas)
+    const steer=(tx,ty,sp,stop)=>{const dx=tx-n.x,dy=ty-n.y,d=Math.hypot(dx,dy)||1,v=Math.min(sp,Math.max(0,d-stop)*1.2),k=Math.min(1,1.8*dt);
+      let wx=dx/d*v,wy=dy/d*v;
+      // Solo los cargueros grandes reciben navegación/colisión contra rocas;
+      // las naves mineras conservan intacto su acercamiento a los asteroides.
+      if(n.kind==='t'){
+        const q=steerAroundAsteroids(n,wx,wy,82,tx,ty,56);wx=q.vx;wy=q.vy;
+      }
+      n.vx+=(wx-n.vx)*k;n.vy+=(wy-n.vy)*k;n.x+=n.vx*dt;n.y+=n.vy*dt;
+      if(n.kind==='t')resolveAsteroidOverlap(n,82,6);
+      if(Math.hypot(n.vx,n.vy)>8)face(Math.atan2(n.vy,n.vx));return d};
+    if(n.s==='dock'){if((n.t-=dt)<=0){n.s=n.kind==='t'?'leave':'seek';n.c=0;n.x=BX;n.y=BY+DOCK;n.vx=0;n.vy=40}continue}
+    if(n.s==='ret'){if(steer(BX,BY,n.kind==='t'?90:60,DOCK*.6)<DOCK-15){n.s='dock';n.t=n.kind==='t'?4:6;n.tg=null}}
+    else if(n.s==='leave'){if(steer(n.sx,n.sy,90,0)<80)n.dead=1}
+    else if(n.s==='seek'){
+      if(!n.tg||n.tg.dead){n.tg=null;
+        const c=ast.filter(a=>a.k!=='cry'&&!a.dead&&Math.hypot(a.x-BX,a.y-BY)<2600&&Math.hypot(a.x-BX,a.y-BY)>650);
+        if(c.length){n.tg=c[(Math.random()*c.length)|0];n.t=9+Math.random()*6}else{n.s='ret';n.c=4}}
+      if(n.tg&&steer(n.tg.x,n.tg.y,60,n.tg.r+90)<n.tg.r+115)n.s='mine'}
+    else if(n.s==='mine'){const a=n.tg;if(!a||a.dead){n.tg=null;n.s='seek';continue}
+      steer(n.x,n.y,0,0);face(Math.atan2(a.y-n.y,a.x-n.x));
+      n.beam=Math.min(160,Math.max(10,Math.hypot(a.x-n.x,a.y-n.y)-a.r*.8));a.hit=.1;spark(n.x+Math.cos(n.a)*n.beam,n.y+Math.sin(n.a)*n.beam,RES[a.k].c,1);
+      if((n.t-=dt)<=0){n.c=4;n.tg=null;n.s='ret'}}}
+  npcs=npcs.filter(n=>!n.dead);ast=ast.filter(a=>!a.dead)}
+// --- drones por roles: cada uno usa un rol distinto del generador SVG ---
+const mkS=(seed,role,fill,stroke,sw=5)=>{const B=SB(role);return sprite(makeShip(seed,B,B.wt,{vari:.1,sw}),300,340,fill,stroke)};
+const tier=()=>0;
+
+function newCt(){const r=['iron','cu','ice','cry'][Math.random()*4|0];const n=r==='iron'?10:6;S.ct={t:'haul',k:r,n,h:0};S.ct.r=Math.round(n*RES[r].v*1.8)}
+const ctDone=()=>S.ct&&p.cargo[S.ct.k]>=S.ct.n;
+function rescue(why){
+  if(deathSequence||deathMenu)return;
+  deathSequence=true;deathTimer=4.5;deathMenu=false;
+  shatterPlayer(p.x,p.y,p.a+Math.PI/2);
+  spark(p.x,p.y,'#f87171',46);
+  flash=1.35;
+  noise(.85,.24,480);
+  beep(180,.28,.09,'sawtooth');
+  say('IMPACTO CRÍTICO · señal de socorro transmitida',4200);
+}
+
+// --- tienda ---
+let tab='m';
+const tp=t=>'<div class="tp'+(tab===t?' on':'')+'">';
+const tabs=()=>'<div class="tabs">'+[['q','Contratos'],['m','Mercado e inventario'],['t','Taller']].map(([t,n])=>'<button data-a="tab" data-k="'+t+'" class="'+(tab===t?'on':'')+'">'+n+'</button>').join('')+'</div>';
+function shop(){
+  const s=st(),val=cargoVal(),rep=Math.ceil(s.hull-p.hull),fu=Math.ceil((s.fuel-p.fuel)*.4);
+  const list=Object.entries(p.cargo).filter(e=>e[1]).map(([k,n])=>n+'× '+RES[k].n).join(', ')||'vacía';
+  $('shop').innerHTML='<h2>Estación Veta</h2><div style="color:var(--mute)">Créditos: <b style="color:var(--ink)">'+S.credits+'</b></div>'
+  +tabs()+tp('q')+(S.debt>0?'<div class="row"><span>Deuda con la corporación: <b>'+S.debt+'</b> cr</span><button data-a="debt" '+(S.credits>0?'':'disabled')+'>Pagar −'+Math.min(S.debt,S.credits)+'</button></div>':'<div class="row"><b>¡Deuda saldada! Eres libre.</b></div>')
+  +(S.ct?'<div class="row"><span>Contrato: '+('entregar '+S.ct.n+' de '+RES[S.ct.k].n)+' · +'+S.ct.r+' cr</span><button data-a="ct" '+(ctDone()?'':'disabled')+'>Cobrar</button></div>':'<div class="row"><span>Sin contrato activo</span><button data-a="newct">Aceptar contrato</button></div>')
+  +'</div>'+tp('m')+'<div class="row"><span>Bodega y mercado</span><button data-a="sell" '+(val?'':'disabled')+'>Vender todo +'+shipVal()+'</button></div>'+grids()
+  +'</div>'+tp('t')+'<div class="row"><span>Celdas de láser: '+(Math.round(S.cells*10)/10)+' · el minado las consume</span><button data-a="cell" '+(S.credits>=40?'':'disabled')+'>+5 celdas −40</button></div>'+'<div class="row"><span>Casco '+Math.round(p.hull)+'/'+s.hull+'</span><button data-a="rep" '+(rep>0&&S.credits>0?'':'disabled')+'>Reparar −'+Math.max(0,rep)+'</button></div>'
+  +'<div class="row"><span>Combustible '+Math.round(p.fuel)+'/'+s.fuel+'</span><button data-a="fuel" '+(fu>0&&S.credits>0?'':'disabled')+'>Repostar −'+Math.max(0,fu)+'</button></div>'
+  +'<h3>Mejoras</h3>'+UP.map(u=>{const l=S.lv[u[0]],c=cost(u[0]);
+    return '<div class="row"><span><b>'+u[1]+'</b> nv '+l+'/'+MAXL+' · '+u[2]+'</span><button data-a="up" data-k="'+u[0]+'" '+(l>=MAXL||S.credits<c?'disabled':'')+'>'+(l>=MAXL?'MAX':'−'+c)+'</button></div>'}).join('')
+  +'</div><div class="row" style="border:0;margin-top:8px"><button data-a="out">Salir a minar</button><button class="gh" data-a="reset">Reiniciar progreso</button></div>';}
+$('shop').onclick=e=>{const b=e.target.closest('button');if(!b||b.disabled)return;const a=b.dataset.a,s=st();
+  if(a==='sell'){S.credits+=shipVal();p.cargo=mk0();beep(880,.1,.06,'sine');setTimeout(()=>beep(1180,.15,.06,'sine'),90)}
+  else if(a==='rep'){const n=Math.min(Math.ceil(s.hull-p.hull),S.credits);S.credits-=n;p.hull=Math.min(s.hull,p.hull+n)}
+  else if(a==='fuel'){const n=Math.min(Math.ceil((s.fuel-p.fuel)*.4),S.credits);S.credits-=n;p.fuel=Math.min(s.fuel,p.fuel+n/.4)}
+  else if(a==='up'){const k=b.dataset.k,c=cost(k);if(S.credits>=c&&S.lv[k]<MAXL){S.credits-=c;S.lv[k]++}}
+  else if(a==='cell'){if(S.credits>=40){S.credits-=40;S.cells+=5}}
+  else if(a==='tab'){tab=b.dataset.k}
+  else if(a==='ct'){if(ctDone()){if(S.ct.t==='haul')p.cargo[S.ct.k]-=S.ct.n;S.credits+=S.ct.r;S.ct=null}}
+  else if(a==='newct'){newCt();say('Contrato aceptado: sigue la flecha de color',4500)}
+  else if(a==='debt'){const n=Math.min(S.debt,S.credits);S.credits-=n;S.debt-=n;if(!S.debt)say('¡Deuda saldada! Eres libre.',6000)}
+  else if(a==='reset'){S=fresh();p.cargo=mk0();const n=st();p.hull=n.hull;p.fuel=n.fuel}
+  else if(a==='out'){docked=false;if(S.debt>0)S.debt=Math.ceil(S.debt*1.02);dockCd=1.5;$('shop').style.display='none';p.x=BX;p.y=BY+DOCK+25;p.vx=0;p.vy=60;say('¡Buena expedición! Busca depósitos y completa contratos.',3000)}
+  save();if(docked)shop();};
+
+// --- entrada ---
+addEventListener('keydown',e=>{if(e.code==='KeyP'||(e.code==='Escape'&&!invOpen)){vetaPauseSet(!vetaPaused);return}if(vetaPaused)return;if(e.code==='KeyI'||(e.code==='Escape'&&invOpen)){toggleInv();return}startAmb();keys[e.code]=1;if(/^(Space|Arrow)/.test(e.code))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=0);
+addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+cv.addEventListener('mousedown',e=>{if(vetaPaused)return;startAmb();if(e.button===2)mouse.rdown=1;else mouse.down=1});
+addEventListener('mouseup',e=>{if(e.button===2)mouse.rdown=0;else mouse.down=0});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+// --- lógica ---
+function update(dt){
+  if(vetaPaused)return;
+  if(deathSequence){
+    if(deathFx){
+      deathFx.t+=dt;
+      if(deathFx.t>.28&&deathFx.t-dt<=.28)spark(deathFx.x,deathFx.y,'#fbbf24',34);
+      if(deathFx.t>1.05&&deathFx.t-dt<=1.05)spark(deathFx.x,deathFx.y,'#fb7185',22);
+    }
+    for(const w of wrecks){
+      w.x+=w.vx*dt;w.y+=w.vy*dt;
+      w.vx*=Math.pow(.992,dt*60);w.vy*=Math.pow(.992,dt*60);
+      w.rot+=w.spin*dt;w.life-=dt;
+      w.scale*=Math.pow(.992,dt*60);
+    }
+    wrecks=wrecks.filter(w=>w.life>0);
+    for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=Math.pow(.97,dt*60);q.vy*=Math.pow(.97,dt*60);q.l-=dt;}
+    parts=parts.filter(q=>q.l>0);
+    deathTimer-=dt;
+    if(deathTimer<=0&&!deathMenu){
+      deathMenu=true;
+      $('deathOverlay').style.display='flex';
+    }
+    hud(st());
+    return;
+  }
+  time+=dt;if(msgT>0&&(msgT-=dt)<=0)$('msg').textContent='';
+  const s=st();
+  if(dockCd>0)dockCd-=dt;
+  p.shT+=dt;if(p.shT>4)p.sh=Math.min(s.sh,p.sh+14*dt);
+
+  if(!invOpen&&!docked){act.on=Math.max(0,act.on-dt);act.cd=Math.max(0,act.cd-dt)}if(!invOpen)updNpc(dt);if(docked||invOpen){hud(s);return}
+  // movimiento con inercia
+  {let da=Math.atan2(mouse.y-H/2,mouse.x-W/2)-p.a;da=Math.atan2(Math.sin(da),Math.cos(da));
+   const want=Math.max(-3,Math.min(3,da*6)),dw=9*dt;
+   p.av+=Math.max(-dw,Math.min(dw,want-p.av));p.a+=p.av*dt}
+  const fw=keys.KeyW||keys.ArrowUp,rev=keys.KeyS||keys.ArrowDown,brake=keys.Space,sd=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  p.thrust=0;
+  if((fw||rev||sd)&&p.fuel>0){
+    const drive=rev?-.72:1;
+    if(fw||rev){p.vx+=Math.cos(p.a)*s.acc*drive*dt;p.vy+=Math.sin(p.a)*s.acc*drive*dt;p.thrust=1}
+    if(sd){p.vx-=Math.sin(p.a)*sd*s.acc*.8*dt;p.vy+=Math.cos(p.a)*sd*s.acc*.8*dt}
+    p.fuel=Math.max(0,p.fuel-(fw||rev?2.0:1.8)*dt)}
+  // Espacio aplica freno vectorial: reduce la inercia sin cambiar la orientación.
+  const dm=Math.exp(-((brake?5.8:0.35))*dt);p.vx*=dm;p.vy*=dm;
+  const sp=Math.hypot(p.vx,p.vy);if(sp>s.vmax){p.vx*=s.vmax/sp;p.vy*=s.vmax/sp}
+  p.x+=p.vx*dt;p.y+=p.vy*dt;
+  if(p.x<20||p.x>WS-20){p.x=Math.max(20,Math.min(WS-20,p.x));p.vx*=-.5}
+  if(p.y<20||p.y>WS-20){p.y=Math.max(20,Math.min(WS-20,p.y));p.vy*=-.5}
+  // colisiones con asteroides
+  for(const a of ast){const dx=p.x-a.x,dy=p.y-a.y,d=Math.hypot(dx,dy)||1,m=a.r*.82+14;
+    if(d<m){const nx=dx/d,ny=dy/d;p.x=a.x+nx*m;p.y=a.y+ny*m;const vn=p.vx*nx+p.vy*ny;
+      if(vn<0){p.vx-=1.6*vn*nx;p.vy-=1.6*vn*ny;const dmg=Math.max(0,-vn-110)*.12;if(dmg>0){p.hull-=dmg;spark(p.x,p.y,'#f87171',6)}}}}
+  // láser
+  p.beam=0;
+  const fire=mouse.rdown;
+  if(fire&&S.cells<=0&&time-lastTick>1.5){lastTick=time;say('Sin celdas de láser: compra más en el Taller',2200)}
+  if(!fire)p.heat=Math.max(0,p.heat-.3*dt);
+  if(p.heat>=1){p.oh=1;say('Láser sobrecalentado',1500)}
+  if(p.oh){p.heat=Math.max(0,p.heat-.25*dt);if(p.heat<.35)p.oh=0}
+  if(fire&&!p.oh&&S.cells>0){S.cells=Math.max(0,S.cells-.2*dt);
+    const ca=Math.cos(p.a),sa=Math.sin(p.a);let best=RANGE+1,tgt=null;
+    const test=o=>{const dx=o.x-p.x,dy=o.y-p.y,pr=dx*ca+dy*sa;if(pr<0||pr>RANGE+o.r)return;
+      const pe=Math.abs(-dx*sa+dy*ca);if(pe>o.r*.9)return;
+      const h=pr-Math.sqrt(Math.max(0,o.r*o.r-pe*pe));if(h<best){best=h;tgt=o}};
+    ast.forEach(test);
+    p.beam=Math.min(best,RANGE);
+    if(tgt){if(time-lastTick>.12){lastTick=time;beep(210+Math.random()*50,.05,.025,'sawtooth')}tgt.hit=.1;tgt.hp-=s.dmg*dt*(tgt.k?1:.55);spark(p.x+ca*p.beam,p.y+sa*p.beam,tgt.k?RES[tgt.k].c:'#f87171',1);
+      if(tgt.hp<=0){
+        if(tgt.k){tgt.dead=1;noise(.3,.12,700);beep(110,.25,.09,'sawtooth');float(tgt.x,tgt.y-tgt.r,'¡Roca rota!','#fde68a');drop(tgt.x,tgt.y,tgt.k,Math.ceil(tgt.r/11));spark(tgt.x,tgt.y,RES[tgt.k].c,14)}
+}}
+    ast=ast.filter(a=>!a.dead);
+  }
+  // reposición de asteroides
+  if((spawnT+=dt)>5&&ast.length<ASTEROID_START_COUNT){spawnT=0;const x=Math.random()*WS,y=Math.random()*WS;
+    if(Math.hypot(x-BX,y-BY)>650&&Math.hypot(x-p.x,y-p.y)>1100&&ast.every(a=>Math.hypot(x-a.x,y-a.y)>=ASTEROID_MIN_GAP))ast.push(spawnA(x,y))}
+  if((cryT+=dt)>24){cryT=0;if(ast.filter(a=>a.k==='cry').length<22){for(let tries=0;tries<40;tries++){const x=R()*WS,y=R()*WS;if(Math.hypot(x-BX,y-BY)>850&&Math.hypot(x-p.x,y-p.y)>700&&ast.every(a=>Math.hypot(x-a.x,y-a.y)>ASTEROID_MIN_GAP*.55)){ast.push(spawnA(x,y,'cry'));break}}}}
+  // fragmentos e imán
+  const full=tot()>=s.cap;
+  for(const it of items){it.x+=it.vx*dt;it.y+=it.vy*dt;it.vx*=.97;it.vy*=.97;it.life-=dt;
+    const dx=p.x-it.x,dy=p.y-it.y,d=Math.hypot(dx,dy)+.001;
+    if(!full&&d<s.mag){const f=(1-d/s.mag)*600+120;it.vx+=dx/d*f*dt;it.vy+=dy/d*f*dt}
+    if(d<24){if(!full){p.cargo[it.k]++;it.life=-1;float(p.x,p.y-24,'+1 '+RES[it.k].n,RES[it.k].c);beep(600+Math.random()*300,.05,.04,'sine')}else if(time-fullT>2){fullT=time;say('Bodega llena: vuelve a la estación',1800);beep(200,.25,.08)}}}
+  items=items.filter(i=>i.life>0);
+  const near=0;
+  if(amb){amb.bat.gain.setTargetAtTime(near?.02:0,AC.currentTime,.4);amb.hum.gain.setTargetAtTime(.01+(p.thrust?.02:0),AC.currentTime,.2)}
+  for(const q of parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt}parts=parts.filter(q=>q.l>0);
+  for(const f of ft){f.y-=30*dt;f.l-=dt}ft=ft.filter(f=>f.l>0);
+  // estados
+  if(p.hull<=0)rescue('Casco destruido');
+  if(p.fuel<=0&&Math.hypot(p.vx,p.vy)<15){if((p.stuck+=dt)>2.5)rescue('Sin combustible')}else p.stuck=0;
+  if(dockCd<=0&&Math.hypot(p.x-BX,p.y-BY)<DOCK){docked=true;p.vx=p.vy=0;p.sh=st().sh;rollPx();shop();$('shop').style.display='block'}
+  hud(s);
+}
+function hud(s){
+  $('vh').textContent=Math.max(0,Math.round(p.hull))+' / '+s.hull;$('bh').style.width=Math.max(0,p.hull/s.hull*100)+'%';
+  $('vf').textContent=Math.round(p.fuel)+' / '+s.fuel;$('bf').style.width=p.fuel/s.fuel*100+'%';
+  $('vc').textContent=tot()+' / '+s.cap+' · valor '+cargoVal();$('bc').style.width=tot()/s.cap*100+'%';
+  $('vm').textContent=S.credits+' cr';$('vd').textContent=S.debt>0?S.debt+' cr':'saldada';
+  $('vo').textContent=S.ct?('Entregar '+RES[S.ct.k].n+' '+Math.min(p.cargo[S.ct.k],S.ct.n)+'/'+S.ct.n)+(ctDone()?' · ¡vuelve a cobrar!':''):tot()>=s.cap?'Bodega llena: vuelve a la estación':tot()?'Vuelve a vender (valor '+cargoVal()+' cr)':'Explora y mina asteroides (clic der./espacio) o acepta un contrato';
+  $('vcell').textContent=Math.round(S.cells*10)/10;$('bl').style.width=Math.min(100,S.cells*5)+'%';$('bl').style.background=S.cells<2?'#f87171':'#fb923c';}
+
+// --- dibujo ---
+function draw(){
+  const cx=p.x-W/2,cy=p.y-H/2;
+  g.fillStyle='#070b14';g.fillRect(0,0,W,H);g.fillStyle='#9fb4d8';
+  for(const s of stars){g.globalAlpha=s[2]+.2;g.fillRect(((s[0]*W-cx*s[2])%W+W)%W,((s[1]*H-cy*s[2])%H+H)%H,s[3],s[3])}
+  g.globalAlpha=1;
+  // Cámara más alejada: reduce la escala del mundo alrededor del centro de pantalla.
+  const WORLD_ZOOM=.82;
+  g.save();g.translate(W/2*(1-WORLD_ZOOM),H/2*(1-WORLD_ZOOM));g.scale(WORLD_ZOOM,WORLD_ZOOM);
+  g.strokeStyle='#24324d';g.lineWidth=2;g.strokeRect(-cx,-cy,WS,WS);
+  // base
+  g.save();g.translate(BX-cx,BY-cy);g.strokeStyle='rgba(252,211,77,.25)';g.setLineDash([6,8]);g.beginPath();g.arc(0,0,DOCK,0,6.29);g.stroke();g.setLineDash([]);
+  g.rotate(time*.02);g.scale(2.4,2.4);blit(baseImg,-200,-200);g.restore();
+  // asteroides
+  for(const a of ast){const sx=a.x-cx,sy=a.y-cy;if(sx<-100||sx>W+100||sy<-100||sy>H+100)continue;
+    g.save();g.translate(sx+(a.hit>0?(a.hit-=.016,(Math.random()-.5)*3):0),sy);g.rotate(a.rot);g.scale(a.r/60,a.r/60);blit(a.img,-200,-200);g.restore();
+    if(a.hp<a.max){g.fillStyle='#24324d';g.fillRect(sx-a.r*.8,sy-a.r-10,a.r*1.6,4);g.fillStyle=RES[a.k].c;g.fillRect(sx-a.r*.8,sy-a.r-10,a.r*1.6*a.hp/a.max,4)}}
+  for(const it of items){g.fillStyle=RES[it.k].c;g.fillRect(it.x-cx-3,it.y-cy-3,6,6)}
+  for(const n of npcs){if(n.s==='dock')continue;const sx=n.x-cx,sy=n.y-cy;if(sx<-80||sx>W+80||sy<-80||sy>H+80)continue;
+    if(n.beam>0){g.strokeStyle='rgba(134,239,172,.8)';g.lineWidth=2;g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+Math.cos(n.a)*n.beam,sy+Math.sin(n.a)*n.beam);g.stroke()}
+    g.save();g.translate(sx,sy);g.rotate(n.a+Math.PI/2);const sc=n.kind==='t'?1.1:.5,cyy=n.kind==='t'?262:280;g.scale(sc,sc);blit(n.img,-150,-cyy);g.restore()}
+  // láser
+  if(p.beam>0&&!docked){g.strokeStyle='rgba(253,230,138,'+(.7+Math.random()*.3)+')';g.lineWidth=3;g.shadowColor='#fbbf24';g.shadowBlur=14;g.beginPath();
+    g.moveTo(W/2+Math.cos(p.a)*24,H/2+Math.sin(p.a)*24);g.lineTo(W/2+Math.cos(p.a)*p.beam,H/2+Math.sin(p.a)*p.beam);g.stroke();g.shadowBlur=0}
+  // nave
+  if(!docked&&!deathSequence){g.save();g.translate(W/2,H/2);g.rotate(p.a+Math.PI/2);g.scale(.5,.5);
+    if(p.thrust){g.fillStyle='#fbbf24';g.beginPath();g.moveTo(-14,56);g.lineTo(14,56);g.lineTo(0,56+30+Math.random()*22);g.fill()}
+    const q=Math.abs(p.av)>.12?Math.sign(p.av):0;
+    if(act.on>0){g.strokeStyle='rgba(125,211,252,'+(.5+.4*Math.sin(time*20))+')';g.lineWidth=4;g.beginPath();g.arc(0,-10,95,0,6.29);g.stroke();g.fillStyle='rgba(125,211,252,.12)';g.fill()}
+    if(q){g.fillStyle='#fde68a';g.fillRect(q>0?-42:36,-50,6,16);g.fillRect(q>0?36:-42,52,6,16)}
+    blit(shipImg,-150,-280);g.restore()}
+  if(deathFx){
+    const t=deathFx.t,progress=Math.min(1,t/1.35),radius=18+progress*245;
+    const fade=Math.max(0,1-progress);
+    if(fade>0){
+      g.save();g.translate(deathFx.x-cx,deathFx.y-cy);
+      g.globalAlpha=fade*.8;g.strokeStyle='#fca5a5';g.lineWidth=5*(1-progress)+1;
+      g.shadowColor='#fb7185';g.shadowBlur=24;
+      g.beginPath();g.arc(0,0,radius,0,Math.PI*2);g.stroke();
+      g.globalAlpha=fade*.18;g.fillStyle='#fb7185';
+      g.beginPath();g.arc(0,0,radius*.72,0,Math.PI*2);g.fill();
+      g.restore();
+    }
+    g.save();g.textAlign='center';g.font='900 15px system-ui';
+    g.fillStyle=(Math.sin(t*13)>-.1)?'#fecaca':'#f87171';
+    g.shadowColor='#ef4444';g.shadowBlur=18;
+    g.fillText('⚠ SEÑAL DE SOCORRO DETECTADA',W/2, H*.22);
+    g.restore();
+  }
+  for(const w of wrecks){
+    const alpha=Math.max(0,Math.min(1,w.life/.8));
+    const shrink=Math.max(.08,w.life/w.max);
+    g.save();g.globalAlpha=alpha;
+    g.translate(w.x-cx,w.y-cy);g.rotate(w.rot);
+    g.scale(w.scale*shrink,w.scale*shrink);
+    g.drawImage(shipImg,w.sx,w.sy,w.sw,w.sh,-w.sw/2,-w.sh/2,w.sw,w.sh);
+    g.restore();
+  }
+  g.globalAlpha=1;
+  for(const q of parts){g.globalAlpha=Math.min(1,q.l*2.5);g.fillStyle=q.c;g.fillRect(q.x-cx-1.5,q.y-cy-1.5,3,3)}g.globalAlpha=1;
+  g.font='bold 13px system-ui';g.textAlign='center';
+  for(const f of ft){g.globalAlpha=Math.min(1,f.l*2);g.fillStyle=f.c;g.fillText(f.t,f.x-cx,f.y-cy)}g.globalAlpha=1;
+  g.restore(); // termina el zoom: HUD direccional y minimapa conservan su tamaño
+  if(flash>0){g.strokeStyle='rgba(248,113,113,'+Math.min(.9,flash*3)+')';g.lineWidth=14;g.strokeRect(0,0,W,H);flash-=.016}
+  const gt=docked?null:guide();
+  if(gt){const a=Math.atan2(gt.y-p.y,gt.x-p.x);if(Math.hypot(gt.x-p.x,gt.y-p.y)>150){g.save();g.translate(W/2+Math.cos(a)*85,H/2+Math.sin(a)*85);g.rotate(a);g.fillStyle=gt.c;g.beginPath();g.moveTo(11,0);g.lineTo(-6,-8);g.lineTo(-6,8);g.fill();g.restore()}}
+  // minimapa
+  const M=130,mx=W-M-14,my=H-M-14-(innerWidth<600?0:0),k=M/WS;
+  g.fillStyle='rgba(14,22,38,.8)';g.fillRect(mx,my,M,M);g.strokeStyle='#24324d';g.lineWidth=1;g.strokeRect(mx,my,M,M);
+  for(const a of ast){g.fillStyle=RES[a.k].c;g.fillRect(mx+a.x*k,my+a.y*k,2,2)}
+  g.fillStyle='#86efac';for(const n of npcs)if(n.s!=='dock')g.fillRect(mx+n.x*k-1,my+n.y*k-1,2,2);
+  g.fillStyle='#fcd34d';g.fillRect(mx+BX*k-3,my+BY*k-3,6,6);g.fillStyle='#fff';g.fillRect(mx+p.x*k-2,my+p.y*k-2,4,4);
+}
+let last=performance.now();
+(function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;update(dt);draw();requestAnimationFrame(loop)})(last);
+$('deathRestore').onclick=()=>{
+  const s=st();
+  for(const k of Object.keys(p.cargo))p.cargo[k]=Math.floor((p.cargo[k]||0)*.5);
+  p.x=BX;p.y=BY+DOCK+30;p.vx=0;p.vy=0;
+  p.hull=s.hull*.5;p.sh=s.sh;p.fuel=s.fuel*.4;p.stuck=0;
+  docked=false;deathSequence=false;deathMenu=false;deathTimer=0;wrecks=[];deathFx=null;parts=[];
+  $('deathOverlay').style.display='none';$('shop').style.display='none';
+  save();say('Remolcado a la base. Se perdió el 50% de la carga.',4500);
+};
+$('deathRestoreHere').onclick=()=>{
+  const s=st(),rx=deathFx?deathFx.x:p.x,ry=deathFx?deathFx.y:p.y;
+  for(const k of Object.keys(p.cargo))p.cargo[k]=0;
+  p.x=rx;p.y=ry;p.vx=0;p.vy=0;
+  p.hull=Math.max(20,s.hull*.35);p.sh=Math.max(0,s.sh*.25);p.fuel=Math.max(15,s.fuel*.3);p.stuck=0;
+  docked=false;deathSequence=false;deathMenu=false;deathTimer=0;wrecks=[];deathFx=null;parts=[];
+  $('deathOverlay').style.display='none';$('shop').style.display='none';
+  save();say('Reconstrucción local completada. Perdiste el 100% de la carga.',4500);
+};
+hud(st());msgT=14;
+</script></body></html>
