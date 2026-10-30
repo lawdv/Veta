@@ -34,6 +34,79 @@
         const stream = new Blob([binary]).stream().pipeThrough(new DecompressionStream("gzip"));
         let gameHtml = await new Response(stream).text();
 
+                // VETA_V6_RESPAWN_AND_RESCUE_PATCH
+        // El ciclo de respawn se reemplaza por una única ruta garantizada.
+        {
+          const fn = gameHtml.indexOf("function updDrones(dt){");
+          const dead = fn < 0 ? -1 : gameHtml.indexOf("    if(d.dead){", fn);
+          const role = dead < 0 ? -1 : gameHtml.indexOf("    const R=DR[d.ty]", dead);
+          if (fn < 0 || dead < 0 || role < 0) throw new Error("No se encontró el ciclo de vida de los drones para aplicar V6.");
+          const respawn = `    if(d.dead){
+      d.rt=(Number.isFinite(d.rt)?d.rt:12)-dt;
+      if(d.rt<=0){
+        const homeX=Number.isFinite(d.hx)?d.hx:d.x, homeY=Number.isFinite(d.hy)?d.hy:d.y;
+        let spot={x:homeX,y:homeY},best=-1;
+        const phase=Math.random()*Math.PI*2;
+        for(let j=0;j<24;j++){
+          const a=phase+j*Math.PI*2/24,rad=260+(j%4)*105;
+          const x=Math.max(120,Math.min(WS-120,homeX+Math.cos(a)*rad));
+          const y=Math.max(120,Math.min(WS-120,homeY+Math.sin(a)*rad));
+          const score=Math.hypot(p.x-x,p.y-y)+(Math.hypot(x-BX,y-BY)<500?350:0);
+          if(score>best){best=score;spot={x,y}}
+        }
+        d.dead=0;d.x=spot.x;d.y=spot.y;d.hx=homeX;d.hy=homeY;
+        d.vx=0;d.vy=0;d.fl=0;d.ch=0;d.burst=0;d.hold=0;d.rejoin=0;
+        d.chargeT=0;d.al=0;d.camp=0;d.act=0;d.prov=0;d.init=1;
+        setDrone(d,d.spawnTy||d.ty||pickTy(t));d.spawnTy=d.ty;
+        d.cd=1.2+Math.random()*1.4;d.ft=1+Math.random()*2;
+      }
+      continue;
+    }
+`;
+          gameHtml = gameHtml.slice(0, dead) + respawn + gameHtml.slice(role);
+          gameHtml = gameHtml.replace(
+            "if(!d.init){d.init=1;d.bhp=d.bhp||d.max;d.vx=d.vy=0;d.ft=2+Math.random()*3;d.hold=0;d.rejoin=0;d.chargeT=0;setDrone(d,d.ty==='a'?'a':pickTy(0))}",
+            "if(!d.init){d.init=1;d.bhp=d.bhp||d.max;d.vx=d.vy=0;d.ft=2+Math.random()*3;d.hold=0;d.rejoin=0;d.chargeT=0;d.spawnTy=d.ty==='a'?'a':(d.ty||pickTy(0));setDrone(d,d.spawnTy)}"
+          );
+        }
+        // Menú de rescate integrado con el HUD: se reconstruye manteniendo los IDs funcionales.
+        gameHtml = gameHtml.replace(
+          /<div id="deathOverlay"[\\s\\S]*?<\\/div>\\s*<script>/,
+          `<div id="deathOverlay" class="death-screen" style="display:none">
+ <section class="death-panel">
+  <div class="death-kicker"><i></i> VETA / SERVICIO DE SALVAMENTO</div>
+  <div class="death-title">NAVE PERDIDA</div>
+  <p class="death-copy">Baliza de emergencia activa. La estación ofrece dos protocolos para recuperar la expedición.</p>
+  <div class="death-rule"><span>PROTOCOLO DE RECUPERACIÓN</span><p>La carga no asegurada se pierde durante el rescate. Los sistemas volverán con capacidad limitada.</p></div>
+  <button id="deathRestore" class="death-choice tow" type="button"><span class="choice-mark">01</span><span class="choice-main"><b>Remolque a estación</b><small>Conservar el 50% de la carga · recuperar en la base</small></span><span class="choice-arrow">›</span></button>
+  <button id="deathRestoreHere" class="death-choice field" type="button"><span class="choice-mark">02</span><span class="choice-main"><b>Reconstrucción local</b><small>Perder toda la carga · volver al lugar del siniestro</small></span><span class="choice-arrow">›</span></button>
+  <div class="death-foot"><span>UNIDAD DE RESCATE VETA</span><span>CASCO IRRECUPERABLE</span></div>
+ </section>
+</div>
+<script>`
+        );
+        const rescueCss = `
+.death-screen{position:fixed!important;inset:0!important;z-index:999!important;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,8,18,.93);backdrop-filter:blur(7px)}
+.death-panel{width:min(470px,94vw);padding:25px 24px 17px;background:linear-gradient(155deg,#101b2d,#0a1220 72%);border:1px solid #426080;border-radius:7px;box-shadow:0 22px 70px #000b;color:var(--ink);text-align:left}
+.death-kicker{font-size:10px;letter-spacing:.16em;color:#7dd3fc;font-weight:800;display:flex;align-items:center;gap:9px}
+.death-kicker i{width:7px;height:7px;border-radius:50%;background:#f87171;box-shadow:0 0 10px #f87171;display:inline-block}
+.death-title{font-size:clamp(25px,6vw,34px);font-weight:900;letter-spacing:.07em;margin:10px 0 7px;color:#e5edf9}
+.death-copy{font-size:13px;line-height:1.65;color:#9aabc6;margin:0 0 17px}
+.death-rule{border-left:2px solid #7dd3fc;background:#111e31;padding:10px 13px;margin:0 0 14px}
+.death-rule span{font-size:9px;letter-spacing:.14em;color:#7dd3fc;font-weight:800}
+.death-rule p{font-size:12px;line-height:1.5;color:#c2cde0;margin:4px 0 0}
+.death-choice{width:100%;display:flex;align-items:center;gap:12px;text-align:left;white-space:normal!important;padding:12px 13px;margin-top:8px;border:1px solid #31435f;border-radius:5px;background:#0d192a;color:var(--ink);cursor:pointer;font:inherit}
+.death-choice:hover:not(:disabled){background:#14243a;color:var(--ink);border-color:#7dd3fc}
+.death-choice.field:hover:not(:disabled){border-color:#f59e0b}
+.choice-mark{font-size:11px;color:#7186a7;font-weight:800;letter-spacing:.08em}
+.choice-main{display:grid;gap:3px;flex:1}.choice-main b{font-size:13px;color:#e5edf9}.choice-main small{font-size:11px;line-height:1.4;color:#91a2bd}
+.choice-arrow{font-size:24px;color:#7dd3fc;line-height:1}.field .choice-arrow{color:#f59e0b}
+.death-foot{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #24324d;margin-top:17px;padding-top:11px;font-size:8px;letter-spacing:.09em;color:#60718e}
+@media(max-width:420px){.death-panel{padding:21px 17px 14px}.death-foot{font-size:7px}}
+`;
+        gameHtml = gameHtml.replace("</style>", rescueCss + "</style>");
+
+
         // Controles de pausa y reinicio aislado para pruebas.
         gameHtml = replaceOnce(gameHtml, '<div id="shop"></div>', `<div id="shop"></div>
 <div id="gameControls" style="position:fixed;right:14px;top:14px;display:flex;gap:7px;z-index:20;pointer-events:auto">
